@@ -252,12 +252,28 @@ export function createFirestoreAdapter() {
 
     async copyPhotoToAppData(file) {
       if (typeof file === 'string') return file; // already a URL
-      const ext  = file.name?.split('.').pop() || 'jpg';
-      const name = `${nanoid()}.${ext}`;
-      // Path must match Storage rules: users/{uid}/{allPaths=**}
-      const ref  = storageRef(firebaseStorage, `users/${uid()}/photos/${name}`);
-      await uploadBytes(ref, file);
-      return await getDownloadURL(ref);
+
+      // Try Firebase Storage first (requires storageBucket env var + rules deployed)
+      if (firebaseStorage && uid()) {
+        try {
+          const ext  = (file.name?.split('.').pop()) || 'jpg';
+          const name = `${nanoid()}.${ext}`;
+          const ref  = storageRef(firebaseStorage, `users/${uid()}/photos/${name}`);
+          await uploadBytes(ref, file);
+          return await getDownloadURL(ref);
+        } catch (err) {
+          console.warn('Firebase Storage upload failed, using base64 fallback:', err.message);
+        }
+      }
+
+      // Base64 fallback — stores the photo inline.
+      // Photos are compressed by PhotoUpload (~100-300 KB) so this is safe.
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read photo file'));
+        reader.readAsDataURL(file);
+      });
     },
 
     async getPhotoDataUrl(urlOrPath) {
