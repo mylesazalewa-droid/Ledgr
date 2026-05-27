@@ -90,6 +90,12 @@ const DEFAULT_CATEGORIES = [
   { id: 'cat_other',        name: 'Other',        icon: 'Box',    color: '#888891', sort_order: 99 },
 ];
 
+// Strip undefined values — Firestore SDK throws if any field is undefined.
+// (null is fine; undefined is not.)
+function clean(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+}
+
 // Module-level helper so storefront methods can call it without `this` dependency
 async function syncStorefrontItemsInternal(u) {
   // Fetch all user items
@@ -155,13 +161,13 @@ export function createFirestoreAdapter() {
     async addItem(item) {
       const id  = nanoid();
       const now = new Date().toISOString();
-      const data = {
+      const data = clean({
         ...item,
         id,
         status:     'available',
         added_at:   now,
         updated_at: now,
-      };
+      });
       await setDoc(docRef('items', id), data);
       if (_cachedItems) _cachedItems = [data, ..._cachedItems];
       return data;
@@ -172,7 +178,7 @@ export function createFirestoreAdapter() {
       const snap = await getDoc(ref);
       if (!snap.exists()) return null;
       const updated = { ...snap.data(), ...changes, updated_at: new Date().toISOString() };
-      await updateDoc(ref, changes);
+      await updateDoc(ref, clean(changes));
       if (_cachedItems) _cachedItems = _cachedItems.map(i => i.id === id ? updated : i);
       return updated;
     },
@@ -223,7 +229,7 @@ export function createFirestoreAdapter() {
         };
       }
 
-      await updateDoc(ref, changes);
+      await updateDoc(ref, clean(changes));
       const updated = { ...item, ...changes };
       if (_cachedItems) _cachedItems = _cachedItems.map(i => i.id === id ? updated : i);
       return updated;

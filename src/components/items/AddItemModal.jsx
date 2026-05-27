@@ -79,7 +79,7 @@ export default function AddItemModal({ onClose }) {
         cost_price:   costPrice,
         est_value:    estValue,
         asking_price: askingPrice,
-        quantity:     quantity > 1 ? quantity : undefined,
+        quantity:     quantity > 1 ? quantity : null,
         notes:        notes.trim() || null,
         listing_url:  listingUrl.trim() || null,
         location:     location.trim() || null,
