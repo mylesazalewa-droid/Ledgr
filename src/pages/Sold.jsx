@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useApp } from '../App.jsx';
 import { DollarSign, Calendar, Download } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
@@ -17,6 +18,7 @@ function timeAgo(dateStr) {
 export default function Sold() {
   const { items, stats, setSelectedItem, searchQuery } = useApp();
   const isMobile = useIsMobile();
+  const [activePlatform, setActivePlatform] = useState(null);
 
   const soldItems = items.filter(i => i.status === 'sold')
     .filter(i => {
@@ -25,6 +27,9 @@ export default function Sold() {
       return i.name?.toLowerCase().includes(q) || i.make?.toLowerCase().includes(q);
     })
     .sort((a, b) => new Date(b.sold_at || b.updated_at) - new Date(a.sold_at || a.updated_at));
+
+  const allPlatforms = [...new Set(soldItems.map(i => i.sold_platform).filter(Boolean))];
+  const displayItems = activePlatform ? soldItems.filter(i => i.sold_platform === activePlatform) : soldItems;
 
   function exportCsv() {
     const header = 'Name,Make,Model,Condition,Asking Price,Sold Price,Platform,Sold At\n';
@@ -56,7 +61,7 @@ export default function Sold() {
             Sold Items
           </h2>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {soldItems.length} items · {fmt(stats.totalEarned)} earned
+            {displayItems.length} items · {fmt(stats.totalEarned)} earned
           </p>
         </div>
         <button onClick={exportCsv} style={{
@@ -75,10 +80,32 @@ export default function Sold() {
         </button>
       </div>
 
+      {/* Platform filter pills */}
+      {allPlatforms.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          {allPlatforms.map(p => (
+            <button
+              key={p}
+              onClick={() => setActivePlatform(activePlatform === p ? null : p)}
+              style={{
+                padding: '4px 12px', borderRadius: 20, fontSize: 11,
+                border: `1px solid ${activePlatform === p ? 'var(--accent-gold-dim)' : 'var(--border-subtle)'}`,
+                background: activePlatform === p ? 'rgba(212,168,83,0.1)' : 'transparent',
+                color: activePlatform === p ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 80ms',
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+
       {isMobile ? (
         // Mobile: card list
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {soldItems.map(item => {
+          {displayItems.map(item => {
             const profit = item.cost_price > 0 ? item.sold_price - item.cost_price : null;
             return (
               <div
@@ -144,7 +171,7 @@ export default function Sold() {
             <span>Platform</span>
           </div>
 
-          {soldItems.map((item, i) => (
+          {displayItems.map((item, i) => (
             <div
               key={item.id}
               onClick={() => setSelectedItem(item)}
@@ -152,7 +179,7 @@ export default function Sold() {
                 display: 'grid',
                 gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
                 padding: '12px 16px',
-                borderBottom: i < soldItems.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                borderBottom: i < displayItems.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                 cursor: 'pointer',
                 transition: 'background 80ms',
                 alignItems: 'center',

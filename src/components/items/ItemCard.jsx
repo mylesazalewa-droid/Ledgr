@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DollarSign, Trash2, Eye } from 'lucide-react';
+import { DollarSign, Trash2, Eye, Check } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import StatusBadge from '../shared/StatusBadge.jsx';
 import SoldModal from './SoldModal.jsx';
@@ -135,7 +135,7 @@ const cancelBtn = { padding: '7px 14px', borderRadius: 7, border: '1px solid var
 const deleteBtn = { padding: '7px 14px', borderRadius: 7, border: 'none', background: 'var(--accent-red)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
 
 // ---- Main card ----
-export default function ItemCard({ item, index = 0 }) {
+export default function ItemCard({ item, index = 0, bulkMode = false, selected = false, onToggleSelect }) {
   const { setSelectedItem, categories, deleteItem, markSold } = useApp();
 
   const [hovered,      setHovered]      = useState(false);
@@ -147,6 +147,14 @@ export default function ItemCard({ item, index = 0 }) {
   const cardRef = useRef(null);
 
   const category = categories.find(c => c.id === item.category_id);
+
+  // Age badge
+  const daysListed = item.status !== 'sold' && item.added_at
+    ? Math.floor((Date.now() - new Date(item.added_at).getTime()) / 86400000)
+    : null;
+  const ageColor = daysListed >= 90 ? 'var(--accent-red)'
+    : daysListed >= 60 ? 'var(--accent-gold)'
+    : 'var(--text-tertiary)';
 
   // Lazy load: only fetch photo once the card is visible on screen
   useEffect(() => {
@@ -180,8 +188,8 @@ export default function ItemCard({ item, index = 0 }) {
     <>
       <motion.div
         ref={cardRef}
-        onClick={() => setSelectedItem(item)}
-        onContextMenu={onContextMenu}
+        onClick={() => bulkMode ? onToggleSelect?.(item.id) : setSelectedItem(item)}
+        onContextMenu={bulkMode ? undefined : onContextMenu}
         onHoverStart={() => setHovered(true)}
         onHoverEnd={() => setHovered(false)}
         initial={{ opacity: 0, y: 16 }}
@@ -221,6 +229,34 @@ export default function ItemCard({ item, index = 0 }) {
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 26 }}>
               📦
+            </div>
+          )}
+
+          {/* Age badge */}
+          {daysListed !== null && daysListed >= 14 && (
+            <div style={{
+              position: 'absolute', top: 6, right: 6, zIndex: 2,
+              background: 'rgba(0,0,0,0.65)',
+              color: ageColor,
+              fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-mono)',
+              padding: '2px 6px', borderRadius: 20,
+              backdropFilter: 'blur(4px)',
+            }}>
+              {daysListed}d
+            </div>
+          )}
+
+          {/* Bulk selection checkbox */}
+          {bulkMode && (
+            <div style={{
+              position: 'absolute', top: 6, left: 6, zIndex: 3,
+              width: 22, height: 22, borderRadius: 6,
+              border: `2px solid ${selected ? 'var(--accent-gold)' : 'rgba(255,255,255,0.5)'}`,
+              background: selected ? 'var(--accent-gold)' : 'rgba(0,0,0,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 120ms',
+            }}>
+              {selected && <Check size={12} color="#0a0a0b" strokeWidth={3} />}
             </div>
           )}
         </div>

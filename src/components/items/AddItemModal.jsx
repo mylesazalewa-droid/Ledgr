@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Check,
+import { X, ChevronRight, ChevronLeft, Check, Scan, Loader,
          Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import PhotoUpload from '../shared/PhotoUpload.jsx';
 import PriceInput from '../shared/PriceInput.jsx';
+import BarcodeScanner from '../shared/BarcodeScanner.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { storage } from '../../services/storage.js';
 
@@ -18,6 +19,8 @@ export default function AddItemModal({ onClose }) {
   const [step,   setStep]   = useState(0);
   const [saving, setSaving] = useState(false);
 
+  const [showScanner,  setShowScanner]  = useState(false);
+  const [scanLookup,   setScanLookup]   = useState(false); // loading state for UPC API
   const [photoPath,    setPhotoPath]    = useState(null);
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const [categoryId,   setCategoryId]  = useState(null);
@@ -36,6 +39,27 @@ export default function AddItemModal({ onClose }) {
     // storage.getPhotoDataUrl handles all path types (IPC path, IndexedDB id, Firebase URL)
     const url = await storage.getPhotoDataUrl(path) || path;
     setPhotoDataUrl(url);
+  }
+
+  async function handleBarcode(code) {
+    setShowScanner(false);
+    setScanLookup(true);
+    try {
+      const res  = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      const found = data.items?.[0];
+      if (found) {
+        if (found.title) setName(found.title);
+        if (found.brand) setMake(found.brand);
+        if (found.model) setModel(found.model || '');
+        // Jump to details step so user can see pre-filled fields
+        setStep(2);
+      }
+    } catch {
+      // silently ignore — user can fill in manually
+    } finally {
+      setScanLookup(false);
+    }
   }
 
   async function handleSave() {
@@ -64,6 +88,7 @@ export default function AddItemModal({ onClose }) {
   const canAdvance = step === 2 ? name.trim().length > 0 : true;
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -169,7 +194,36 @@ export default function AddItemModal({ onClose }) {
 
               {step === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <InputField label="Item Name *" value={name} onChange={setName} placeholder="e.g. Sony WH-1000XM5" autoFocus />
+                  {/* Item Name with scan button */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={labelStyle}>Item Name *</label>
+                      <button
+                        onClick={() => setShowScanner(true)}
+                        disabled={scanLookup}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '2px 8px', borderRadius: 20, fontSize: 10,
+                          border: '1px solid var(--border-subtle)',
+                          background: 'var(--bg-elevated)',
+                          color: 'var(--text-tertiary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {scanLookup
+                          ? <><Loader size={10} style={{ animation: 'spin 1s linear infinite' }} /> Looking up…</>
+                          : <><Scan size={10} /> Scan Barcode</>
+                        }
+                      </button>
+                    </div>
+                    <input
+                      autoFocus
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="e.g. Sony WH-1000XM5"
+                      style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'var(--font-body)' }}
+                    />
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <InputField label="Make / Brand" value={make}  onChange={setMake}  placeholder="e.g. Sony" />
                     <InputField label="Model"        value={model} onChange={setModel} placeholder="e.g. WH-1000XM5" />
@@ -272,6 +326,14 @@ export default function AddItemModal({ onClose }) {
         </div>
       </motion.div>
     </motion.div>
+
+    {showScanner && (
+      <BarcodeScanner
+        onResult={handleBarcode}
+        onClose={() => setShowScanner(false)}
+      />
+    )}
+  </>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Copy, Trash2, DollarSign, Check, AlertTriangle } from 'lucide-react';
+import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2 } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import StatusBadge from '../shared/StatusBadge.jsx';
 import CategoryBadge from '../categories/CategoryBadge.jsx';
@@ -143,7 +143,33 @@ export default function ItemDrawer({ item, onClose }) {
   }, [item.photo_path, item.photo_url]);
 
   function update(field, value) {
-    updateItem(item.id, { [field]: value });
+    if (field === 'asking_price' && item.asking_price && item.asking_price !== value) {
+      const history = Array.isArray(item.price_history) ? item.price_history : [];
+      updateItem(item.id, {
+        asking_price: value,
+        price_history: [...history, { price: item.asking_price, date: new Date().toISOString() }],
+      });
+    } else {
+      updateItem(item.id, { [field]: value });
+    }
+  }
+
+  async function shareItem() {
+    const lines = [
+      item.name,
+      [item.make, item.model].filter(Boolean).join(' '),
+      `Condition: ${item.condition || 'Good'}`,
+      item.asking_price ? `Asking: ${fmt(item.asking_price)}` : '',
+      item.notes || '',
+      item.listing_url || '',
+    ].filter(Boolean).join('\n');
+
+    if (navigator.share) {
+      try { await navigator.share({ title: item.name, text: lines }); } catch {}
+    } else {
+      navigator.clipboard.writeText(lines);
+      toast?.('Copied to clipboard', 'success');
+    }
   }
 
   function copyListingText() {
@@ -288,6 +314,25 @@ export default function ItemDrawer({ item, onClose }) {
               />
             </div>
 
+            {/* Price history */}
+            {Array.isArray(item.price_history) && item.price_history.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                  Price History
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {[...item.price_history].reverse().map((entry, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{fmt(entry.price)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Sold info */}
             {item.status === 'sold' && (
               <div style={{
@@ -360,8 +405,11 @@ export default function ItemDrawer({ item, onClose }) {
               <DollarSign size={14} /> Mark Sold
             </button>
           )}
+          <button onClick={shareItem} style={secondaryBtn}>
+            <Share2 size={14} /> Share
+          </button>
           <button onClick={copyListingText} style={secondaryBtn}>
-            {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy Listing</>}
+            {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy</>}
           </button>
           {item.listing_url && (
             <button onClick={() => storage.openExternal(item.listing_url)} style={secondaryBtn}>

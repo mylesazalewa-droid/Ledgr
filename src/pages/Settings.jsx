@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Cloud } from 'lucide-react';
+import { Download, Cloud, LogOut } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import CategoryManager from '../components/categories/CategoryManager.jsx';
 import { storage, isElectron } from '../services/storage.js';
+import { auth, isFirebaseConfigured } from '../firebase.js';
+import { signOut } from 'firebase/auth';
 
 function Section({ title, description, children }) {
   return (
@@ -125,12 +127,30 @@ export default function Settings() {
         <Section title="Cloud Sync">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Cloud size={16} color="var(--accent-blue)" />
-            <div>
+            <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>Synced via Firebase</div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                 Your data syncs automatically across all devices.
               </div>
             </div>
+            {isFirebaseConfigured && (
+              <button
+                onClick={() => signOut(auth)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '7px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(224,92,92,0.25)',
+                  background: 'rgba(224,92,92,0.07)',
+                  color: 'var(--accent-red)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <LogOut size={13} /> Sign Out
+              </button>
+            )}
           </div>
         </Section>
       )}

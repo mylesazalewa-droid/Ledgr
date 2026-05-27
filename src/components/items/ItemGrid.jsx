@@ -4,7 +4,7 @@ import EmptyState from '../shared/EmptyState.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { Package } from 'lucide-react';
 
-export default function ItemGrid({ statusFilter }) {
+export default function ItemGrid({ statusFilter, bulkMode = false, selectedIds, onToggleSelect }) {
   const { filteredItems, itemsLoading } = useApp();
   const isMobile = useIsMobile();
 
@@ -45,7 +45,14 @@ export default function ItemGrid({ statusFilter }) {
   return (
     <div style={gridStyle}>
       {displayItems.map((item, i) => (
-        <ItemCard key={item.id} item={item} index={i} />
+        <ItemCard
+          key={item.id}
+          item={item}
+          index={i}
+          bulkMode={bulkMode}
+          selected={selectedIds?.has(item.id) ?? false}
+          onToggleSelect={onToggleSelect}
+        />
       ))}
     </div>
   );
