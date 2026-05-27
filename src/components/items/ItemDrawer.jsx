@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2 } from 'lucide-react';
+import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import StatusBadge from '../shared/StatusBadge.jsx';
 import CategoryBadge from '../categories/CategoryBadge.jsx';
@@ -126,13 +126,40 @@ function PriceField({ label, value, onChange, color }) {
   );
 }
 
+// Shared compress helper (mirrors PhotoUpload.jsx)
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(file), 8000);
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          clearTimeout(timer);
+          const MAX = 900, scale = img.width > MAX ? MAX / img.width : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width  = Math.round(img.width  * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(blob => { URL.revokeObjectURL(url); resolve(blob || file); }, 'image/jpeg', 0.70);
+        } catch { clearTimeout(timer); URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = () => { clearTimeout(timer); URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    } catch { clearTimeout(timer); resolve(file); }
+  });
+}
+
 export default function ItemDrawer({ item, onClose }) {
   const { updateItem, markSold, deleteItem, categories, toast } = useApp();
   const isMobile = useIsMobile();
-  const [photoDataUrl,  setPhotoDataUrl]  = useState(null);
-  const [showSoldModal, setShowSoldModal] = useState(false);
-  const [showDelete,    setShowDelete]    = useState(false);
-  const [copied,        setCopied]        = useState(false);
+  const [photoDataUrl,   setPhotoDataUrl]   = useState(null);
+  const [photoHovered,   setPhotoHovered]   = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showSoldModal,  setShowSoldModal]  = useState(false);
+  const [showDelete,     setShowDelete]     = useState(false);
+  const [copied,         setCopied]         = useState(false);
+  const fileInputRef = useRef(null);
 
   const category = categories.find(c => c.id === item.category_id);
 
@@ -141,6 +168,28 @@ export default function ItemDrawer({ item, onClose }) {
     const src = item.photo_path || item.photo_url;
     if (src) storage.getPhotoDataUrl(src).then(setPhotoDataUrl);
   }, [item.photo_path, item.photo_url]);
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const compressed = await compressImage(file);
+      const savedPath  = await storage.copyPhotoToAppData(compressed);
+      if (savedPath) {
+        await updateItem(item.id, { photo_path: savedPath });
+        const url = await storage.getPhotoDataUrl(savedPath);
+        setPhotoDataUrl(url || savedPath);
+        toast?.('Photo saved', 'success');
+      }
+    } catch (err) {
+      console.error('Photo update failed:', err);
+      toast?.('Photo failed to save', 'error');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
+    }
+  }
 
   function update(field, value) {
     if (field === 'asking_price' && item.asking_price && item.asking_price !== value) {
@@ -250,13 +299,59 @@ export default function ItemDrawer({ item, onClose }) {
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-          {/* Photo */}
-          <div style={{ width: '100%', aspectRatio: '16/10', background: 'var(--bg-elevated)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
-            {photoDataUrl
-              ? <img src={photoDataUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>
-            }
+        <div style={{ flex: 1, overflow: 'auto', padding: 20, paddingBottom: isMobile ? 'calc(24px + env(safe-area-inset-bottom))' : 24 }}>
+          {/* Hidden file input */}
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
+
+          {/* Photo — tap to add/change */}
+          <div
+            onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
+            onMouseEnter={() => setPhotoHovered(true)}
+            onMouseLeave={() => setPhotoHovered(false)}
+            style={{
+              width: '100%', aspectRatio: '16/10',
+              background: 'var(--bg-elevated)', borderRadius: 12,
+              overflow: 'hidden', marginBottom: 20,
+              cursor: 'pointer', position: 'relative',
+              border: photoDataUrl ? 'none' : '2px dashed var(--border-subtle)',
+            }}
+          >
+            {photoDataUrl ? (
+              <>
+                <img
+                  src={photoDataUrl}
+                  alt={item.name}
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover',
+                    transition: 'transform 250ms',
+                    transform: (photoHovered || uploadingPhoto) ? 'scale(1.03)' : 'scale(1)',
+                  }}
+                />
+                {/* Change-photo overlay */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'rgba(0,0,0,0.45)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  opacity: (photoHovered || uploadingPhoto) ? 1 : 0,
+                  transition: 'opacity 150ms',
+                }}>
+                  {uploadingPhoto
+                    ? <Loader size={18} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+                    : <><ImagePlus size={16} color="#fff" /><span style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>Change Photo</span></>
+                  }
+                </div>
+              </>
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {uploadingPhoto
+                  ? <Loader size={24} color="var(--accent-gold)" style={{ animation: 'spin 1s linear infinite' }} />
+                  : <>
+                      <ImagePlus size={26} color="var(--text-tertiary)" />
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Tap to add photo</span>
+                    </>
+                }
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -409,6 +504,41 @@ export default function ItemDrawer({ item, onClose }) {
             <Field label="Listing URL">
               <EditableField value={item.listing_url} onChange={v => update('listing_url', v)} placeholder="https://…" />
             </Field>
+
+            {/* ── Delete ── */}
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+              {!showDelete ? (
+                <button
+                  onClick={() => setShowDelete(true)}
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: 10, cursor: 'pointer',
+                    border: '1px solid rgba(224,92,92,0.2)',
+                    background: 'rgba(224,92,92,0.04)',
+                    color: 'var(--accent-red)', fontSize: 13,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  <Trash2 size={14} /> Delete Item
+                </button>
+              ) : (
+                <div style={{
+                  background: 'rgba(224,92,92,0.05)',
+                  border: '1px solid rgba(224,92,92,0.2)',
+                  borderRadius: 10, padding: '14px 16px',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-red)', marginBottom: 4 }}>Delete this item?</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>This can't be undone.</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setShowDelete(false)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => deleteItem(item.id)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: 'var(--accent-red)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -438,23 +568,6 @@ export default function ItemDrawer({ item, onClose }) {
               <ExternalLink size={14} /> Open
             </button>
           )}
-          <div style={{ flex: 1 }} />
-          {!showDelete ? (
-            <button onClick={() => setShowDelete(true)} style={dangerBtn} title="Delete item">
-              <Trash2 size={14} />
-            </button>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: 'var(--accent-red)' }}>Delete?</span>
-              <button onClick={() => setShowDelete(false)} style={{ ...secondaryBtn, fontSize: 11, padding: '5px 10px' }}>No</button>
-              <button
-                onClick={() => deleteItem(item.id)}
-                style={{ ...dangerBtn, padding: '5px 12px', fontSize: 11 }}
-              >
-                Yes, delete
-              </button>
-            </div>
-          )}
         </div>
       </motion.aside>
 
@@ -472,7 +585,6 @@ export default function ItemDrawer({ item, onClose }) {
   );
 }
 
-const selectStyle = { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', width: '100%' };
-const primaryBtn  = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-green)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+const selectStyle  = { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', width: '100%' };
+const primaryBtn   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-green)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
 const secondaryBtn = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' };
-const dangerBtn   = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(224,92,92,0.2)', background: 'rgba(224,92,92,0.08)', color: 'var(--accent-red)', cursor: 'pointer' };
