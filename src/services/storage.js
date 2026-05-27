@@ -1,28 +1,35 @@
 /**
- * Storage abstraction — routes to Electron IPC in the desktop app,
- * or to Firebase Firestore in the web/Vercel version.
+ * Storage abstraction — routes to the right backend:
  *
- * All consumers import from here rather than calling window.stash directly.
+ *   Electron desktop    →  window.stash  (IPC → SQLite)
+ *   Web + Firebase      →  firestoreStorage  (Firestore + Storage)
+ *   Web (no Firebase)   →  localStorageStorage  (localStorage + IndexedDB)
+ *
+ * All components import from here. Never call window.stash or Firebase directly.
  */
 
-import { createFirestoreAdapter } from './firestoreStorage.js';
+import { isFirebaseConfigured } from '../firebase.js';
+import { createFirestoreAdapter }     from './firestoreStorage.js';
+import { createLocalStorageAdapter }  from './localStorageStorage.js';
 
-// window.stash is injected by the Electron preload script
-const isElectron = typeof window !== 'undefined' && typeof window.stash !== 'undefined';
+export const isElectron = typeof window !== 'undefined' && typeof window.stash !== 'undefined';
 
 let _storage = null;
 
 function getStorage() {
   if (_storage) return _storage;
-  _storage = isElectron ? window.stash : createFirestoreAdapter();
+  if (isElectron) {
+    _storage = window.stash;
+  } else if (isFirebaseConfigured) {
+    _storage = createFirestoreAdapter();
+  } else {
+    _storage = createLocalStorageAdapter();
+  }
   return _storage;
 }
 
-// Export a proxy that lazily delegates to the right backend
 export const storage = new Proxy({}, {
   get(_, prop) {
     return (...args) => getStorage()[prop]?.(...args);
   },
 });
-
-export { isElectron };

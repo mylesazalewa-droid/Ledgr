@@ -89,6 +89,17 @@ input, textarea {
 .font-mono { font-family: var(--font-mono); }
 .font-display { font-family: var(--font-display); }
 
+/* Mobile tap targets — prevent 300ms delay and ghost clicks */
+button, [role="button"], a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent accidental pan/zoom gestures from swallowing button taps */
+* {
+  touch-action: pan-x pan-y;
+}
+
 /* Spinner */
 @keyframes spin {
   from { transform: rotate(0deg); }

@@ -6,6 +6,7 @@ import { useApp } from '../../App.jsx';
 import PhotoUpload from '../shared/PhotoUpload.jsx';
 import PriceInput from '../shared/PriceInput.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { storage } from '../../services/storage.js';
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 const ICON_MAP   = { Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box };
@@ -32,7 +33,8 @@ export default function AddItemModal({ onClose }) {
 
   async function handlePhotoSelected(path) {
     setPhotoPath(path);
-    const url = await window.stash?.getPhotoDataUrl?.(path) || path;
+    // storage.getPhotoDataUrl handles all path types (IPC path, IndexedDB id, Firebase URL)
+    const url = await storage.getPhotoDataUrl(path) || path;
     setPhotoDataUrl(url);
   }
 
