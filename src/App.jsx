@@ -15,6 +15,7 @@ import { useCategories } from './hooks/useCategories.js';
 import { useStats } from './hooks/useStats.js';
 import { isFirebaseConfigured, auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
+import { ACHIEVEMENTS, getUnlocked, getSeenIds, markSeen } from './utils/achievements.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -59,6 +60,32 @@ function AppInner() {
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
   const { stats, refetch: refetchStats } = useStats();
+
+  // ── Achievement notifications ──────────────────────────────────────────────
+  const achievementInitRef = useRef(false);
+  useEffect(() => {
+    if (!stats) return;
+    if (!achievementInitRef.current) {
+      // First load: silently mark all currently unlocked as seen so we
+      // don't spam notifications for things the user already earned.
+      achievementInitRef.current = true;
+      markSeen(getUnlocked(stats).map(a => a.id));
+      return;
+    }
+    // Subsequent updates: fire a toast for each newly unlocked achievement
+    const seen = getSeenIds();
+    const newlyUnlocked = ACHIEVEMENTS.filter(a => {
+      try { return a.check(stats) && !seen.has(a.id); } catch { return false; }
+    });
+    if (newlyUnlocked.length === 0) return;
+    markSeen(newlyUnlocked.map(a => a.id));
+    // Show one at a time; stagger if multiple unlock simultaneously
+    newlyUnlocked.forEach((a, i) => {
+      setTimeout(() => {
+        toast(`${a.icon} ${a.label}`, 'achievement', 5500, a.desc);
+      }, i * 900);
+    });
+  }, [stats]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Client-side filter + sort
   const filteredItems = sortItems(

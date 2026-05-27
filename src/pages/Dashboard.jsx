@@ -1,10 +1,11 @@
-import { TrendingDown, Zap } from 'lucide-react';
+import { TrendingDown, Zap, Trophy } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import StatsBar from '../components/dashboard/StatsBar.jsx';
 import EarningsChart from '../components/dashboard/EarningsChart.jsx';
 import RecentActivity from '../components/dashboard/RecentActivity.jsx';
 import ItemCard from '../components/items/ItemCard.jsx';
 import { useIsMobile } from '../hooks/useIsMobile.js';
+import { ACHIEVEMENTS, getUnlocked, getDeclutterScore, getDeclutterLabel, getSeenIds } from '../utils/achievements.js';
 
 function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
@@ -19,6 +20,11 @@ export default function Dashboard() {
   const agingItems     = stats.longestSitting?.filter(i => i.days_listed >= 60 && i.days_listed < 90) ?? [];
   const stuckItems     = stats.longestSitting?.filter(i => i.days_listed >= 90) ?? [];
   const hasAttention   = (stats.longestSitting?.length ?? 0) > 0;
+
+  const declutterScore = getDeclutterScore(stats);
+  const declutterLabel = getDeclutterLabel(declutterScore);
+  const unlockedIds    = new Set(getUnlocked(stats).map(a => a.id));
+  const seenIds        = getSeenIds();
 
   return (
     <div style={{ padding: isMobile ? 14 : 24, maxWidth: 1100, margin: '0 auto' }}>
@@ -48,6 +54,44 @@ export default function Dashboard() {
           {stats.totalProfit > 0 && <Chip label={`${fmt(stats.totalProfit)} profit`} accent />}
         </div>
       </div>
+
+      {/* ── Declutter Score ── */}
+      {(stats.soldCount > 0 || stats.totalItems > 0) && (
+        <div style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 14,
+          padding: isMobile ? '14px 16px' : '16px 22px',
+          marginBottom: isMobile ? 16 : 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+              Declutter Score
+            </div>
+            {/* Bar */}
+            <div style={{ height: 6, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
+              <div style={{
+                height: '100%',
+                width: `${declutterScore}%`,
+                background: declutterScore >= 80
+                  ? 'var(--accent-green)'
+                  : declutterScore >= 40
+                    ? 'var(--accent-gold)'
+                    : 'var(--accent-blue)',
+                borderRadius: 99,
+                transition: 'width 600ms ease',
+              }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{declutterLabel}</div>
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: isMobile ? 28 : 34, fontWeight: 700, color: declutterScore >= 80 ? 'var(--accent-green)' : 'var(--accent-gold)', lineHeight: 1 }}>
+            {declutterScore}<span style={{ fontSize: '0.45em', color: 'var(--text-tertiary)' }}>%</span>
+          </div>
+        </div>
+      )}
 
       {/* Stats — horizontal scroll on mobile */}
       {isMobile ? (
@@ -107,6 +151,54 @@ export default function Dashboard() {
           )}
         </div>
       )}
+      {/* ── Achievements ── */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <Trophy size={14} color="var(--accent-gold)" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Achievements</span>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            {unlockedIds.size} / {ACHIEVEMENTS.length}
+          </span>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))',
+          gap: isMobile ? 8 : 10,
+        }}>
+          {ACHIEVEMENTS.map(a => {
+            const earned = unlockedIds.has(a.id);
+            return (
+              <div
+                key={a.id}
+                title={a.desc}
+                style={{
+                  background: earned ? 'rgba(212,168,83,0.07)' : 'var(--bg-surface)',
+                  border: `1px solid ${earned ? 'rgba(212,168,83,0.25)' : 'var(--border-subtle)'}`,
+                  borderRadius: 12,
+                  padding: isMobile ? '10px 8px' : '12px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 6,
+                  opacity: earned ? 1 : 0.42,
+                  transition: 'opacity 200ms, border-color 200ms',
+                }}
+              >
+                <span style={{ fontSize: isMobile ? 22 : 26, lineHeight: 1 }}>{earned ? a.icon : '🔒'}</span>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: earned ? 'var(--accent-gold)' : 'var(--text-tertiary)',
+                  textAlign: 'center',
+                  lineHeight: 1.3,
+                }}>
+                  {a.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
