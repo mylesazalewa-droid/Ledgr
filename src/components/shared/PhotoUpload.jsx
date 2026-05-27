@@ -3,6 +3,27 @@ import { Image, Upload, Camera, Loader, AlertCircle } from 'lucide-react';
 import { storage, isElectron } from '../../services/storage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
+// Resize + compress any image to JPEG before uploading.
+// Fixes iOS HEIC compatibility issues and keeps file sizes small.
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1200;
+      const scale = img.width > MAX ? MAX / img.width : 1;
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.78);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, size = 'normal' }) {
   const [dragging,   setDragging]   = useState(false);
   const [uploading,  setUploading]  = useState(false);
@@ -33,7 +54,8 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
     setUploading(true);
 
     try {
-      const savedPath = await storage.copyPhotoToAppData(file);
+      const compressed = await compressImage(file);
+      const savedPath  = await storage.copyPhotoToAppData(compressed);
       onPhotoSelected(savedPath);
       URL.revokeObjectURL(blobUrl);
       setPreview(null);
@@ -64,12 +86,14 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
       setPreview(blobUrl);
       setUploading(true);
       try {
-        const savedPath = await storage.copyPhotoToAppData(file);
+        const compressed = await compressImage(file);
+        const savedPath  = await storage.copyPhotoToAppData(compressed);
         onPhotoSelected(savedPath);
         URL.revokeObjectURL(blobUrl);
         setPreview(null);
       } catch (err) {
         console.error('Photo upload failed:', err);
+        setUploadErr('Upload failed — tap to retry');
         setPreview(null);
       } finally {
         setUploading(false);

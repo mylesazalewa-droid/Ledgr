@@ -217,7 +217,19 @@ export function createLocalStorageAdapter() {
     // ---- Photos ----
     async copyPhotoToAppData(file) {
       if (typeof file === 'string') return file;
-      return storePhoto(file);
+      try {
+        return await storePhoto(file);
+      } catch (err) {
+        // IndexedDB unavailable (iOS private mode, quota exceeded, etc.)
+        // Fall back: convert blob to base64 data URL — works everywhere, stored on the item itself.
+        console.warn('IndexedDB photo storage failed, falling back to base64:', err);
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Could not read photo file'));
+          reader.readAsDataURL(file);
+        });
+      }
     },
 
     async getPhotoDataUrl(path) {

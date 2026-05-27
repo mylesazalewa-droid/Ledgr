@@ -159,6 +159,33 @@ export default function AddItemModal({ onClose }) {
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     Photo is optional — you can add one later.
                   </p>
+
+                  {/* Barcode scan shortcut */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>or</span>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+                  </div>
+                  <button
+                    onClick={() => setShowScanner(true)}
+                    disabled={scanLookup}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      padding: '11px 16px',
+                      borderRadius: 10,
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-elevated)',
+                      color: scanLookup ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      width: '100%',
+                    }}
+                  >
+                    {scanLookup
+                      ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Looking up barcode…</>
+                      : <><Scan size={14} /> Scan Barcode to auto-fill details</>
+                    }
+                  </button>
                 </div>
               )}
 
@@ -194,36 +221,7 @@ export default function AddItemModal({ onClose }) {
 
               {step === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {/* Item Name with scan button */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <label style={labelStyle}>Item Name *</label>
-                      <button
-                        onClick={() => setShowScanner(true)}
-                        disabled={scanLookup}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          padding: '2px 8px', borderRadius: 20, fontSize: 10,
-                          border: '1px solid var(--border-subtle)',
-                          background: 'var(--bg-elevated)',
-                          color: 'var(--text-tertiary)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {scanLookup
-                          ? <><Loader size={10} style={{ animation: 'spin 1s linear infinite' }} /> Looking up…</>
-                          : <><Scan size={10} /> Scan Barcode</>
-                        }
-                      </button>
-                    </div>
-                    <input
-                      autoFocus
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      placeholder="e.g. Sony WH-1000XM5"
-                      style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'var(--font-body)' }}
-                    />
-                  </div>
+                  <InputField label="Item Name *" value={name} onChange={setName} placeholder="e.g. Sony WH-1000XM5" autoFocus />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <InputField label="Make / Brand" value={make}  onChange={setMake}  placeholder="e.g. Sony" />
                     <InputField label="Model"        value={model} onChange={setModel} placeholder="e.g. WH-1000XM5" />
