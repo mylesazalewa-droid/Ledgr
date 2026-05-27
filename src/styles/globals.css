@@ -53,7 +53,7 @@
 }
 
 html, body, #root {
-  height: 100%;
+  height: 100dvh; /* dynamic viewport — handles iOS address bar resize */
   overflow: hidden;
 }
 
@@ -85,35 +85,25 @@ input, textarea {
   border-radius: 4px;
 }
 
-/* Number / price font */
-.font-mono { font-family: var(--font-mono); }
-.font-display { font-family: var(--font-display); }
-
-/* Mobile tap targets — prevent 300ms delay and ghost clicks */
+/* Remove 300ms tap delay on buttons — do NOT apply to * (breaks scrolling) */
 button, [role="button"], a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Prevent accidental pan/zoom gestures from swallowing button taps */
-* {
-  touch-action: pan-x pan-y;
-}
-
-/* Spinner */
+/* Spinner animation */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
 
-/* Mobile: full-height support for notched phones */
-html, body, #root {
-  height: 100dvh;
-}
-
-/* Hide scrollbars on mobile stat chips */
+/* Hide scrollbars on stat chip rows etc */
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Number / price font */
+.font-mono    { font-family: var(--font-mono); }
+.font-display { font-family: var(--font-display); }

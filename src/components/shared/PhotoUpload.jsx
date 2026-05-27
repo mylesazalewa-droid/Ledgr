@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
-import { Image, Upload, Camera, Loader } from 'lucide-react';
+import { Image, Upload, Camera, Loader, AlertCircle } from 'lucide-react';
 import { storage, isElectron } from '../../services/storage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, size = 'normal' }) {
   const [dragging,   setDragging]   = useState(false);
   const [uploading,  setUploading]  = useState(false);
+  const [uploadErr,  setUploadErr]  = useState(null);
   const [preview,    setPreview]    = useState(null); // local blob URL while uploading
   const fileInputRef = useRef(null);
   const isMobile = useIsMobile();
@@ -24,6 +25,7 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadErr(null);
 
     // Show local preview instantly
     const blobUrl = URL.createObjectURL(file);
@@ -31,13 +33,13 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
     setUploading(true);
 
     try {
-      // Upload to Firebase Storage → get permanent URL
       const savedPath = await storage.copyPhotoToAppData(file);
       onPhotoSelected(savedPath);
       URL.revokeObjectURL(blobUrl);
       setPreview(null);
     } catch (err) {
       console.error('Photo upload failed:', err);
+      setUploadErr('Upload failed — tap to retry');
       setPreview(null);
     } finally {
       setUploading(false);
@@ -140,6 +142,11 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
               <>
                 <Loader size={24} color="var(--accent-gold)" style={{ animation: 'spin 1s linear infinite' }} />
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Uploading…</span>
+              </>
+            ) : uploadErr ? (
+              <>
+                <AlertCircle size={24} color="var(--accent-red)" />
+                <span style={{ fontSize: 12, color: 'var(--accent-red)' }}>{uploadErr}</span>
               </>
             ) : dragging ? (
               <>

@@ -252,9 +252,10 @@ export function createFirestoreAdapter() {
 
     async copyPhotoToAppData(file) {
       if (typeof file === 'string') return file; // already a URL
-      const ext  = file.name.split('.').pop();
-      const name = `${uid()}/${nanoid()}.${ext}`;
-      const ref  = storageRef(firebaseStorage, `photos/${name}`);
+      const ext  = file.name?.split('.').pop() || 'jpg';
+      const name = `${nanoid()}.${ext}`;
+      // Path must match Storage rules: users/{uid}/{allPaths=**}
+      const ref  = storageRef(firebaseStorage, `users/${uid()}/photos/${name}`);
       await uploadBytes(ref, file);
       return await getDownloadURL(ref);
     },
