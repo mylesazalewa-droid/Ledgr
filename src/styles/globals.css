@@ -88,3 +88,21 @@ input, textarea {
 /* Number / price font */
 .font-mono { font-family: var(--font-mono); }
 .font-display { font-family: var(--font-display); }
+
+/* Spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Mobile: full-height support for notched phones */
+html, body, #root {
+  height: 100dvh;
+}
+
+/* Hide scrollbars on mobile stat chips */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
