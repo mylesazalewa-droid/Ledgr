@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Cloud, Download } from 'lucide-react';
+import { Download, Cloud } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import CategoryManager from '../components/categories/CategoryManager.jsx';
+import { storage, isElectron } from '../services/storage.js';
 
 function Section({ title, description, children }) {
   return (
@@ -69,21 +70,21 @@ export default function Settings() {
   const [cloudPhotos, setCloudPhotos] = useState(false);
 
   useEffect(() => {
-    window.stash.getSetting('FEATURE_FIREBASE_SYNC').then(v => setSyncEnabled(v === 'true'));
-    window.stash.getSetting('FEATURE_CLOUD_PHOTOS').then(v => setCloudPhotos(v === 'true'));
+    if (!isElectron) return; // These settings are Electron-only feature flags
+    storage.getSetting('FEATURE_FIREBASE_SYNC').then(v => setSyncEnabled(v === 'true'));
+    storage.getSetting('FEATURE_CLOUD_PHOTOS').then(v => setCloudPhotos(v === 'true'));
   }, []);
 
   function exportAll() {
-    const allItems = items;
     const header = 'Name,Make,Model,Category,Condition,Est Value,Asking Price,Sold Price,Platform,Status,Notes,Added At\n';
-    const rows = allItems.map(i =>
+    const rows = items.map(i =>
       [i.name, i.make||'', i.model||'', i.category_id||'', i.condition||'',
        i.est_value||'', i.asking_price||'', i.sold_price||'', i.sold_platform||'',
        i.status, i.notes||'', i.added_at||'']
         .map(v => `"${String(v).replace(/"/g, '""')}"`)
         .join(',')
     ).join('\n');
-    window.stash.exportCsv(header + rows);
+    storage.exportCsv(header + rows);
   }
 
   return (
@@ -96,65 +97,66 @@ export default function Settings() {
         <CategoryManager />
       </Section>
 
-      <Section title="Cloud Sync" description="Sync your inventory across devices via Firebase.">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Toggle
-            label="Firebase Sync"
-            description="Requires a license key and Firebase project setup."
-            value={syncEnabled}
-            onChange={v => {
-              setSyncEnabled(v);
-              window.stash.setSetting('FEATURE_FIREBASE_SYNC', String(v));
-            }}
-          />
-          <Toggle
-            label="Cloud Photo Backup"
-            description="Upload item photos to Firebase Storage."
-            value={cloudPhotos}
-            onChange={v => {
-              setCloudPhotos(v);
-              window.stash.setSetting('FEATURE_CLOUD_PHOTOS', String(v));
-            }}
-          />
-          {syncEnabled && (
-            <div style={{
-              padding: '10px 14px',
-              background: 'rgba(91,142,240,0.08)',
-              border: '1px solid rgba(91,142,240,0.2)',
-              borderRadius: 8,
-              fontSize: 12,
-              color: 'var(--accent-blue)',
-            }}>
-              Configure your Firebase project in the .env file. See .env.example for required variables.
-            </div>
-          )}
-        </div>
-      </Section>
-
-      <Section title="Data" description="Export or manage your inventory data.">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>Export All as CSV</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{items.length} items</div>
-            </div>
-            <button
-              onClick={exportAll}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '7px 14px',
-                borderRadius: 8,
-                border: '1px solid var(--border-subtle)',
-                background: 'transparent',
-                color: 'var(--text-secondary)',
-                fontSize: 12,
-                cursor: 'pointer',
+      {/* Cloud sync section — only relevant in Electron (desktop) */}
+      {isElectron ? (
+        <Section title="Cloud Sync" description="Sync your inventory across devices via Firebase.">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Toggle
+              label="Firebase Sync"
+              description="Requires Firebase project setup."
+              value={syncEnabled}
+              onChange={v => {
+                setSyncEnabled(v);
+                storage.setSetting('FEATURE_FIREBASE_SYNC', String(v));
               }}
-            >
-              <Download size={13} />
-              Export
-            </button>
+            />
+            <Toggle
+              label="Cloud Photo Backup"
+              description="Upload item photos to Firebase Storage."
+              value={cloudPhotos}
+              onChange={v => {
+                setCloudPhotos(v);
+                storage.setSetting('FEATURE_CLOUD_PHOTOS', String(v));
+              }}
+            />
           </div>
+        </Section>
+      ) : (
+        <Section title="Cloud Sync">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Cloud size={16} color="var(--accent-blue)" />
+            <div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>Synced via Firebase</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                Your data syncs automatically across all devices.
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      <Section title="Data" description="Export your inventory data.">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>Export All as CSV</div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{items.length} items</div>
+          </div>
+          <button
+            onClick={exportAll}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--border-subtle)',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            <Download size={13} />
+            Export
+          </button>
         </div>
       </Section>
 

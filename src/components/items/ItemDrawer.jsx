@@ -6,6 +6,7 @@ import StatusBadge from '../shared/StatusBadge.jsx';
 import CategoryBadge from '../categories/CategoryBadge.jsx';
 import SoldModal from './SoldModal.jsx';
 import { storage } from '../../services/storage.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 
@@ -127,6 +128,7 @@ function PriceField({ label, value, onChange, color }) {
 
 export default function ItemDrawer({ item, onClose }) {
   const { updateItem, markSold, deleteItem, categories, toast } = useApp();
+  const isMobile = useIsMobile();
   const [photoDataUrl,  setPhotoDataUrl]  = useState(null);
   const [showSoldModal, setShowSoldModal] = useState(false);
   const [showDelete,    setShowDelete]    = useState(false);
@@ -175,11 +177,23 @@ export default function ItemDrawer({ item, onClose }) {
 
       {/* Drawer */}
       <motion.aside
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
+        initial={isMobile ? { y: '100%' } : { x: '100%' }}
+        animate={isMobile ? { y: 0 } : { x: 0 }}
+        exit={isMobile ? { y: '100%' } : { x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-        style={{
+        style={isMobile ? {
+          position: 'fixed', left: 0, right: 0, bottom: 0,
+          top: 'env(safe-area-inset-top)',
+          background: 'var(--bg-surface)',
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          borderTop: '1px solid var(--border-subtle)',
+          zIndex: 101,
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-float)',
+          overflow: 'hidden',
+        } : {
           position: 'fixed', top: 0, right: 0, bottom: 0,
           width: 480,
           background: 'var(--bg-surface)',
@@ -191,8 +205,15 @@ export default function ItemDrawer({ item, onClose }) {
           overflow: 'hidden',
         }}
       >
+        {/* Drag handle (mobile only) */}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4, flexShrink: 0 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-subtle)' }} />
+          </div>
+        )}
+
         {/* Header */}
-        <div style={{ padding: '38px 20px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ padding: isMobile ? '10px 20px 14px' : '38px 20px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <StatusBadge status={item.status} size="lg" />
             {category && <CategoryBadge category={category} size="lg" />}

@@ -1,23 +1,30 @@
 import { useApp } from '../../App.jsx';
 import ItemCard from './ItemCard.jsx';
 import EmptyState from '../shared/EmptyState.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { Package } from 'lucide-react';
 
 export default function ItemGrid({ statusFilter }) {
   const { filteredItems, itemsLoading } = useApp();
+  const isMobile = useIsMobile();
 
   const displayItems = statusFilter
     ? filteredItems.filter(i => i.status === statusFilter)
     : filteredItems.filter(i => i.status !== 'sold');
 
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: isMobile
+      ? 'repeat(2, 1fr)'
+      : 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: isMobile ? 10 : 16,
+    padding: isMobile ? 12 : 24,
+    alignContent: 'start',
+  };
+
   if (itemsLoading) {
     return (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: 16,
-        padding: 24,
-      }}>
+      <div style={gridStyle}>
         {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -36,13 +43,7 @@ export default function ItemGrid({ statusFilter }) {
   }
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-      gap: 16,
-      padding: 24,
-      alignContent: 'start',
-    }}>
+    <div style={gridStyle}>
       {displayItems.map((item, i) => (
         <ItemCard key={item.id} item={item} index={i} />
       ))}
