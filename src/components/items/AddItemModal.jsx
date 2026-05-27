@@ -116,19 +116,31 @@ export default function AddItemModal({ onClose }) {
         exit={isMobile   ? { y: 40,  opacity: 0 } : { scale: 0.92, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         style={{
-          background: 'var(--bg-surface)',
-          borderRadius: isMobile ? 0 : 'var(--radius-modal)',
+          // Do NOT put overflow:hidden here — Framer Motion leaves a residual
+          // transform: translateY(0px) on this element after the spring settles.
+          // overflow:hidden + any transform on the same element is a known iOS
+          // WebKit bug that makes child touch targets completely unresponsive.
+          // Visual clipping is handled by the inner static wrapper below.
           width: isMobile ? '100%' : 480,
           height: isMobile ? '100dvh' : undefined,
           maxHeight: isMobile ? '100dvh' : '85vh',
-          border: isMobile ? 'none' : '1px solid var(--border-subtle)',
-          boxShadow: isMobile ? 'none' : 'var(--shadow-float)',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
-          paddingTop: isMobile ? 'env(safe-area-inset-top)' : undefined,
         }}
       >
+      {/* Static inner wrapper — owns overflow:hidden + borderRadius for safe iOS hit-testing */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        minHeight: 0,
+        background: 'var(--bg-surface)',
+        borderRadius: isMobile ? 0 : 'var(--radius-modal)',
+        border: isMobile ? 'none' : '1px solid var(--border-subtle)',
+        boxShadow: isMobile ? 'none' : 'var(--shadow-float)',
+        paddingTop: isMobile ? 'env(safe-area-inset-top)' : undefined,
+      }}>
         {/* Header */}
         <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
@@ -379,6 +391,7 @@ export default function AddItemModal({ onClose }) {
             </button>
           )}
         </div>
+      </div>{/* end static inner wrapper */}
       </motion.div>
     </motion.div>
 
