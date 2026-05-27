@@ -133,6 +133,11 @@ button {
      which have no transform, so the compositing layer is released. */
 }
 
+/* Instant overlay — no animation, no compositing layer */
+.modal-mobile-overlay {
+  /* intentionally unstyled — just a plain fixed container */
+}
+
 .modal-mobile-enter {
   /*
    * fill-mode: backwards — applies the 'from' frame before the animation starts

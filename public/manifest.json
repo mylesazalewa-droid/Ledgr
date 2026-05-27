@@ -34,22 +34,6 @@
       "purpose": "maskable"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "Add Item",
-      "short_name": "Add",
-      "description": "Add a new item to your stash",
-      "url": "/?action=add",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "My Inventory",
-      "short_name": "Inventory",
-      "description": "Browse your full inventory",
-      "url": "/?page=inventory",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    }
-  ],
   "categories": ["productivity", "finance"],
   "screenshots": []
 }

@@ -49,14 +49,12 @@ function sortItems(items, sortBy) {
 function AppInner() {
   const toast = useToast();
 
-  // Parse PWA shortcut params on first load
-  const _sp = new URLSearchParams(window.location.search);
-  const [currentPage,        setCurrentPage]        = useState(_sp.get('page') || 'dashboard');
+  const [currentPage,        setCurrentPage]        = useState('dashboard');
   const [selectedCategory,   setSelectedCategory]   = useState(null);
   const [searchQuery,        setSearchQuery]        = useState('');
   const [sortBy,             setSortBy]             = useState('newest');
   const [selectedItem,       setSelectedItem]       = useState(null);
-  const [showAddModal,       setShowAddModal]       = useState(_sp.get('action') === 'add');
+  const [showAddModal,       setShowAddModal]       = useState(false);
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0);
 
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();

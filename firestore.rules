@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Private user data ────────────────────────────────────────────────────
+    // Only the authenticated owner can read or write their own documents.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Public storefronts ───────────────────────────────────────────────────
+    // Anyone can read a storefront profile and its items (no login required).
+    // Only the authenticated owner can write their storefront data.
+    match /storefronts/{userId} {
+      allow read:  if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+
+      match /items/{itemId} {
+        allow read:  if true;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
