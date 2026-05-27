@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Check, Scan, Loader,
-         Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Scan, Loader, Zap,
+         Cpu, Home, Shirt, Wrench, Star, Bike, Box } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import PhotoUpload from '../shared/PhotoUpload.jsx';
 import PriceInput from '../shared/PriceInput.jsx';
@@ -12,6 +12,7 @@ import { storage } from '../../services/storage.js';
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 const ICON_MAP   = { Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box };
 const STEPS      = ['Photo', 'Category', 'Details', 'Extras'];
+const LOCATIONS  = ['Living Room', 'Bedroom', 'Master Closet', 'Kitchen', 'Garage', 'Basement', 'Attic', 'Office', 'Storage'];
 
 export default function AddItemModal({ onClose }) {
   const { addItem, categories } = useApp();
@@ -20,7 +21,8 @@ export default function AddItemModal({ onClose }) {
   const [saving, setSaving] = useState(false);
 
   const [showScanner,  setShowScanner]  = useState(false);
-  const [scanLookup,   setScanLookup]   = useState(false); // loading state for UPC API
+  const [scanLookup,   setScanLookup]   = useState(false);
+  const [quickMode,    setQuickMode]    = useState(false);
   const [photoPath,    setPhotoPath]    = useState(null);
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const [categoryId,   setCategoryId]  = useState(null);
@@ -31,6 +33,7 @@ export default function AddItemModal({ onClose }) {
   const [costPrice,    setCostPrice]   = useState(0);
   const [estValue,     setEstValue]    = useState(0);
   const [askingPrice,  setAskingPrice] = useState(0);
+  const [location,     setLocation]    = useState('');
   const [notes,        setNotes]       = useState('');
   const [listingUrl,   setListingUrl]  = useState('');
 
@@ -77,6 +80,7 @@ export default function AddItemModal({ onClose }) {
         asking_price: askingPrice,
         notes:        notes.trim() || null,
         listing_url:  listingUrl.trim() || null,
+        location:     location.trim() || null,
         photo_path:   photoPath,
       });
       onClose();
@@ -153,38 +157,46 @@ export default function AddItemModal({ onClose }) {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.18 }}
             >
-              {step === 0 && (
+              {step === 0 && !quickMode && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <PhotoUpload photoPath={photoPath} photoDataUrl={photoDataUrl} onPhotoSelected={handlePhotoSelected} />
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     Photo is optional — you can add one later.
                   </p>
 
-                  {/* Barcode scan shortcut */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>or</span>
-                    <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-                  </div>
-                  <button
-                    onClick={() => setShowScanner(true)}
-                    disabled={scanLookup}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      padding: '11px 16px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border-subtle)',
-                      background: 'var(--bg-elevated)',
-                      color: scanLookup ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      width: '100%',
-                    }}
-                  >
+                  <Divider label="shortcuts" />
+
+                  {/* Barcode scan */}
+                  <button onClick={() => setShowScanner(true)} disabled={scanLookup} style={shortcutBtn}>
                     {scanLookup
                       ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Looking up barcode…</>
                       : <><Scan size={14} /> Scan Barcode to auto-fill details</>
                     }
+                  </button>
+
+                  {/* Quick add */}
+                  <button onClick={() => setQuickMode(true)} style={{ ...shortcutBtn, color: 'var(--accent-gold)', borderColor: 'var(--border-accent)' }}>
+                    <Zap size={14} /> Quick Save — name & price only
+                  </button>
+                </div>
+              )}
+
+              {step === 0 && quickMode && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                    Capture it fast — fill in details later from the item drawer.
+                  </div>
+                  <InputField label="Item Name *" value={name} onChange={setName} placeholder="e.g. Sony headphones" autoFocus />
+                  <PriceInput label="Asking Price" value={askingPrice} onChange={setAskingPrice} />
+                  <button
+                    onClick={handleSave}
+                    disabled={!name.trim() || saving}
+                    style={{ ...saveBtn, opacity: (!name.trim() || saving) ? 0.5 : 1, cursor: (!name.trim() || saving) ? 'not-allowed' : 'pointer', marginTop: 4 }}
+                  >
+                    {saving ? 'Saving…' : <><Zap size={14} /> Quick Save</>}
+                  </button>
+                  <button onClick={() => setQuickMode(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 12, cursor: 'pointer', textAlign: 'center' }}>
+                    Fill in all details instead →
                   </button>
                 </div>
               )}
@@ -257,12 +269,40 @@ export default function AddItemModal({ onClose }) {
 
               {step === 3 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Location */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={labelStyle}>Location in home</label>
+                    <input
+                      value={location}
+                      onChange={e => setLocation(e.target.value)}
+                      placeholder="e.g. Garage, Closet…"
+                      style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'var(--font-body)' }}
+                    />
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {LOCATIONS.map(l => (
+                        <button
+                          key={l}
+                          onClick={() => setLocation(l)}
+                          style={{
+                            padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
+                            border: `1px solid ${location === l ? 'var(--accent-gold-dim)' : 'var(--border-subtle)'}`,
+                            background: location === l ? 'rgba(212,168,83,0.12)' : 'var(--bg-elevated)',
+                            color: location === l ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                            fontWeight: location === l ? 600 : 400,
+                          }}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={labelStyle}>Notes</label>
                     <textarea
                       value={notes}
                       onChange={e => setNotes(e.target.value)}
-                      rows={4}
+                      rows={3}
                       placeholder="Describe condition, what's included, any flaws…"
                       style={textareaStyle}
                     />
@@ -350,8 +390,19 @@ function InputField({ label, value, onChange, placeholder, autoFocus }) {
   );
 }
 
+function Divider({ label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+      <span style={{ fontSize: 10, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+    </div>
+  );
+}
+
 const labelStyle    = { fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: '0.04em', textTransform: 'uppercase' };
 const textareaStyle = { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', resize: 'none', fontFamily: 'var(--font-body)', width: '100%' };
-const backBtn = { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' };
-const nextBtn = { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 };
-const saveBtn = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent-gold)', color: '#0a0a0b', fontSize: 13, fontWeight: 700 };
+const backBtn      = { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' };
+const nextBtn      = { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 };
+const saveBtn      = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--accent-gold)', color: '#0a0a0b', fontSize: 13, fontWeight: 700 };
+const shortcutBtn  = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', width: '100%' };

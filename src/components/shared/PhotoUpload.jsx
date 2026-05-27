@@ -5,22 +5,45 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 // Resize + compress any image before uploading.
 // Max 900px wide, JPEG 70% quality → typically 60–150 KB.
+// Fully fail-safe: always resolves with a Blob/File, never rejects.
 function compressImage(file) {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX = 900;
-      const scale = img.width > MAX ? MAX / img.width : 1;
-      const canvas = document.createElement('canvas');
-      canvas.width  = Math.round(img.width  * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.70);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
-    img.src = url;
+    // Safety timeout: if canvas.toBlob never fires (iOS memory pressure), fall back after 8s
+    const timer = setTimeout(() => resolve(file), 8000);
+
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          clearTimeout(timer);
+          const MAX = 900;
+          const scale = img.width > MAX ? MAX / img.width : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width  = Math.round(img.width  * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(url);
+            resolve(blob || file);
+          }, 'image/jpeg', 0.70);
+        } catch {
+          clearTimeout(timer);
+          URL.revokeObjectURL(url);
+          resolve(file);
+        }
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    } catch {
+      // URL.createObjectURL failed (iOS private browsing, etc.) — use original file
+      clearTimeout(timer);
+      resolve(file);
+    }
   });
 }
 
@@ -56,13 +79,18 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
     try {
       const compressed = await compressImage(file);
       const savedPath  = await storage.copyPhotoToAppData(compressed);
-      onPhotoSelected(savedPath);
       URL.revokeObjectURL(blobUrl);
       setPreview(null);
+      if (savedPath) {
+        onPhotoSelected(savedPath);
+      } else {
+        setUploadErr('Photo unavailable — item will save without it');
+      }
     } catch (err) {
-      console.error('Photo upload failed:', err);
-      setUploadErr('Upload failed — tap to retry');
+      console.error('Photo upload error:', err);
+      URL.revokeObjectURL(blobUrl);
       setPreview(null);
+      setUploadErr('Upload failed — tap to retry');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -88,13 +116,18 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
       try {
         const compressed = await compressImage(file);
         const savedPath  = await storage.copyPhotoToAppData(compressed);
-        onPhotoSelected(savedPath);
         URL.revokeObjectURL(blobUrl);
         setPreview(null);
+        if (savedPath) {
+          onPhotoSelected(savedPath);
+        } else {
+          setUploadErr('Photo unavailable — item will save without it');
+        }
       } catch (err) {
-        console.error('Photo upload failed:', err);
-        setUploadErr('Upload failed — tap to retry');
+        console.error('Photo upload error:', err);
+        URL.revokeObjectURL(blobUrl);
         setPreview(null);
+        setUploadErr('Upload failed — tap to retry');
       } finally {
         setUploading(false);
       }

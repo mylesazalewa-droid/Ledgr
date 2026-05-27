@@ -221,13 +221,17 @@ export function createLocalStorageAdapter() {
         return await storePhoto(file);
       } catch (err) {
         // IndexedDB unavailable (iOS private mode, quota exceeded, etc.)
-        // Fall back: convert blob to base64 data URL — works everywhere, stored on the item itself.
+        // Fall back to base64 — never rejects, returns null on total failure.
         console.warn('IndexedDB photo storage failed, falling back to base64:', err);
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload  = () => resolve(reader.result);
-          reader.onerror = () => reject(new Error('Could not read photo file'));
-          reader.readAsDataURL(file);
+        return new Promise((resolve) => {
+          try {
+            const reader = new FileReader();
+            reader.onload  = () => resolve(reader.result);
+            reader.onerror = () => resolve(null); // never reject
+            reader.readAsDataURL(file);
+          } catch {
+            resolve(null);
+          }
         });
       }
     },

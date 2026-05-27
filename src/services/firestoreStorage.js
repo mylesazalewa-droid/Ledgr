@@ -253,26 +253,31 @@ export function createFirestoreAdapter() {
     async copyPhotoToAppData(file) {
       if (typeof file === 'string') return file; // already a URL
 
-      // Try Firebase Storage first (requires storageBucket env var + rules deployed)
+      // Try Firebase Storage first — best for CDN delivery & bandwidth
       if (firebaseStorage && uid()) {
         try {
           const ext  = (file.name?.split('.').pop()) || 'jpg';
           const name = `${nanoid()}.${ext}`;
           const ref  = storageRef(firebaseStorage, `users/${uid()}/photos/${name}`);
-          await uploadBytes(ref, file);
+          await uploadBytes(ref, file, { contentType: file.type || 'image/jpeg' });
           return await getDownloadURL(ref);
         } catch (err) {
-          console.warn('Firebase Storage upload failed, using base64 fallback:', err.message);
+          console.warn('Firebase Storage upload failed, falling back to base64:', err.message);
         }
       }
 
-      // Base64 fallback — stores the photo inline.
-      // Photos are compressed by PhotoUpload (~100-300 KB) so this is safe.
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload  = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error('Failed to read photo file'));
-        reader.readAsDataURL(file);
+      // Base64 fallback — stores photo inline in Firestore document.
+      // Photos are compressed to ~60–150 KB by PhotoUpload, well within Firestore's 1 MB limit.
+      // This path NEVER rejects — worst case it returns null.
+      return new Promise((resolve) => {
+        try {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result);
+          reader.onerror = () => resolve(null); // never reject
+          reader.readAsDataURL(file);
+        } catch {
+          resolve(null);
+        }
       });
     },
 
