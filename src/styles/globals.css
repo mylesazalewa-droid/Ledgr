@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-void:     #0a0a0b;
+  --color-bg-base:     #111113;
+  --color-bg-surface:  #18181c;
+  --color-bg-elevated: #222228;
+
+  --color-gold:        #d4a853;
+  --color-gold-dim:    #8a6a2e;
+  --color-green:       #4caf7d;
+  --color-red:         #e05c5c;
+  --color-blue:        #5b8ef0;
+
+  --color-text-primary:   #f0efe8;
+  --color-text-secondary: #888891;
+  --color-text-tertiary:  #44444d;
+
+  --font-display: 'Instrument Serif', serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+:root {
+  --bg-void:     #0a0a0b;
+  --bg-base:     #111113;
+  --bg-surface:  #18181c;
+  --bg-elevated: #222228;
+  --bg-overlay:  rgba(255, 255, 255, 0.04);
+
+  --accent-gold:     #d4a853;
+  --accent-gold-dim: #8a6a2e;
+  --accent-green:    #4caf7d;
+  --accent-red:      #e05c5c;
+  --accent-blue:     #5b8ef0;
+
+  --text-primary:   #f0efe8;
+  --text-secondary: #888891;
+  --text-tertiary:  #44444d;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-accent: rgba(212, 168, 83, 0.25);
+
+  --radius-card:  14px;
+  --radius-modal: 18px;
+
+  --shadow-card:  0 2px 20px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 8px 48px rgba(0, 0, 0, 0.7);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Allow text selection inside inputs & textareas */
+input, textarea {
+  user-select: text;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Number / price font */
+.font-mono { font-family: var(--font-mono); }
+.font-display { font-family: var(--font-display); }

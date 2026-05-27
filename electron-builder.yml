@@ -1,0 +1,16 @@
+appId: com.myles.stash
+productName: Stash
+directories:
+  output: dist-electron
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64]
+dmg:
+  title: Stash
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+  - node_modules/**/*
