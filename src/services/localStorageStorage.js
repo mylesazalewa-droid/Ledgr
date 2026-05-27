@@ -106,8 +106,8 @@ function computeStats(items) {
   });
 
   return {
-    totalItems: available.length,
-    totalValue: available.reduce((s, i) => s + (i.est_value || i.asking_price || 0), 0),
+    totalItems: available.reduce((s, i) => s + (i.quantity || 1), 0),
+    totalValue: available.reduce((s, i) => s + (i.est_value || i.asking_price || 0) * (i.quantity || 1), 0),
     soldCount: sold.length,
     totalEarned,
     totalCost,
@@ -155,10 +155,28 @@ export function createLocalStorageAdapter() {
 
     async markSold(id, saleData) {
       const items = load(KEY_ITEMS, []);
-      const now   = new Date().toISOString();
-      const updated = items.map(i =>
-        i.id === id ? { ...i, ...saleData, status: 'sold', sold_at: now, updated_at: now } : i
-      );
+      const item  = items.find(i => i.id === id);
+      if (!item) return null;
+      const now        = new Date().toISOString();
+      const currentQty = item.quantity || 1;
+
+      let changes;
+      if (currentQty > 1) {
+        changes = { quantity: currentQty - 1, updated_at: now };
+      } else {
+        changes = {
+          status:        'sold',
+          sold_price:    saleData.soldPrice,
+          net_proceeds:  saleData.netProceeds ?? saleData.soldPrice,
+          sold_at:       now,
+          sold_platform: saleData.platform    || null,
+          sold_fee_pct:  saleData.feePct      || 0,
+          sold_shipping: saleData.shippingCost || 0,
+          updated_at:    now,
+        };
+      }
+
+      const updated = items.map(i => i.id === id ? { ...i, ...changes } : i);
       save(KEY_ITEMS, updated);
       return updated.find(i => i.id === id);
     },

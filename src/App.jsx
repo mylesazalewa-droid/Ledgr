@@ -89,7 +89,11 @@ function AppInner() {
     const updated = await markSold(id, saleData);
     if (selectedItem?.id === id) setSelectedItem(updated);
     refetchStats();
-    toast('Item marked as sold!', 'success');
+    const remaining = updated?.quantity || 0;
+    const msg = updated?.status === 'available' && remaining > 0
+      ? `1 unit sold — ${remaining} remaining`
+      : 'Item marked as sold!';
+    toast(msg, 'success');
     return updated;
   }, [markSold, selectedItem, refetchStats, toast]);
 

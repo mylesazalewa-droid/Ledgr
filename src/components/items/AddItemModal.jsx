@@ -33,6 +33,7 @@ export default function AddItemModal({ onClose }) {
   const [costPrice,    setCostPrice]   = useState(0);
   const [estValue,     setEstValue]    = useState(0);
   const [askingPrice,  setAskingPrice] = useState(0);
+  const [quantity,     setQuantity]    = useState(1);
   const [location,     setLocation]    = useState('');
   const [notes,        setNotes]       = useState('');
   const [listingUrl,   setListingUrl]  = useState('');
@@ -78,6 +79,7 @@ export default function AddItemModal({ onClose }) {
         cost_price:   costPrice,
         est_value:    estValue,
         asking_price: askingPrice,
+        quantity:     quantity > 1 ? quantity : undefined,
         notes:        notes.trim() || null,
         listing_url:  listingUrl.trim() || null,
         location:     location.trim() || null,
@@ -258,7 +260,21 @@ export default function AddItemModal({ onClose }) {
                       ))}
                     </div>
                   </div>
-                  {/* Pricing — 3 columns */}
+                  {/* Quantity + Pricing */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={labelStyle}>Quantity</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, width: 'fit-content', overflow: 'hidden' }}>
+                      <button
+                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                        style={{ padding: '7px 14px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', lineHeight: 1 }}
+                      >−</button>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', minWidth: 28, textAlign: 'center' }}>{quantity}</span>
+                      <button
+                        onClick={() => setQuantity(q => q + 1)}
+                        style={{ padding: '7px 14px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', lineHeight: 1 }}
+                      >+</button>
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <PriceInput label="Cost Paid"    value={costPrice}   onChange={setCostPrice}   />
                     <PriceInput label="Est. Value"   value={estValue}    onChange={setEstValue}    />

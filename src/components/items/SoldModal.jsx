@@ -96,7 +96,14 @@ export default function SoldModal({ item, onClose, onConfirm }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Mark as Sold</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{item.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  {item.name}
+                  {(item.quantity || 1) > 1 && (
+                    <span style={{ marginLeft: 6, color: 'var(--accent-gold)', fontWeight: 600 }}>
+                      · selling 1 of {item.quantity}
+                    </span>
+                  )}
+                </div>
               </div>
               <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={18} color="var(--text-secondary)" />

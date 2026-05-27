@@ -292,6 +292,28 @@ export default function ItemDrawer({ item, onClose }) {
               </Field>
             </div>
 
+            {/* Quantity */}
+            <Field label="Quantity">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, width: 'fit-content', overflow: 'hidden' }}>
+                <button
+                  onClick={() => update('quantity', Math.max(1, (item.quantity || 1) - 1))}
+                  style={{ padding: '6px 13px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', lineHeight: 1 }}
+                >−</button>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', minWidth: 28, textAlign: 'center' }}>
+                  {item.quantity || 1}
+                </span>
+                <button
+                  onClick={() => update('quantity', (item.quantity || 1) + 1)}
+                  style={{ padding: '6px 13px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', lineHeight: 1 }}
+                >+</button>
+              </div>
+              {(item.quantity || 1) > 1 && item.asking_price > 0 && (
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  {item.quantity} × {fmt(item.asking_price)} = <span style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{fmt((item.quantity || 1) * item.asking_price)}</span> total
+                </div>
+              )}
+            </Field>
+
             {/* Pricing grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
               <PriceField

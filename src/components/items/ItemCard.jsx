@@ -246,6 +246,20 @@ export default function ItemCard({ item, index = 0, bulkMode = false, selected =
             </div>
           )}
 
+          {/* Quantity badge */}
+          {(item.quantity || 1) > 1 && (
+            <div style={{
+              position: 'absolute', bottom: 6, right: 6, zIndex: 2,
+              background: 'rgba(212,168,83,0.9)',
+              color: '#0a0a0b',
+              fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)',
+              padding: '2px 6px', borderRadius: 20,
+              backdropFilter: 'blur(4px)',
+            }}>
+              ×{item.quantity}
+            </div>
+          )}
+
           {/* Bulk selection checkbox */}
           {bulkMode && (
             <div style={{

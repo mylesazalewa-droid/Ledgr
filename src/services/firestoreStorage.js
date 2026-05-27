@@ -45,9 +45,9 @@ function computeStats(items) {
   const available = items.filter(i => i.status !== 'sold');
   const sold      = items.filter(i => i.status === 'sold');
 
-  const totalItems  = available.length;
+  const totalItems  = available.reduce((s, i) => s + (i.quantity || 1), 0);
   const soldCount   = sold.length;
-  const totalValue  = available.reduce((s, i) => s + (i.asking_price || 0), 0);
+  const totalValue  = available.reduce((s, i) => s + (i.asking_price || 0) * (i.quantity || 1), 0);
   const totalEarned = sold.reduce((s, i) => s + (i.sold_price  || 0), 0);
   const totalCost   = sold.reduce((s, i) => s + (i.cost_price  || 0), 0);
   const totalProfit = totalEarned - totalCost;
@@ -156,25 +156,42 @@ export function createFirestoreAdapter() {
       const snap = await getDoc(ref);
       if (!snap.exists()) return null;
 
-      const changes = {
-        status:        'sold',
-        sold_price:    saleData.soldPrice,
-        sold_at:       saleData.soldAt || now,
-        sold_platform: saleData.platform || null,
-        updated_at:    now,
-      };
-      await updateDoc(ref, changes);
+      const item       = snap.data();
+      const currentQty = item.quantity || 1;
 
+      // Always log the individual sale unit
       const logId = nanoid();
       await setDoc(docRef('sold_log', logId), {
         id: logId, item_id: id,
-        sold_price: saleData.soldPrice,
-        platform:   saleData.platform || null,
-        sold_at:    saleData.soldAt || now,
-        notes:      saleData.notes || null,
+        sold_price:    saleData.soldPrice,
+        net_proceeds:  saleData.netProceeds ?? saleData.soldPrice,
+        platform:      saleData.platform    || null,
+        sold_at:       now,
+        notes:         saleData.notes       || null,
+        sold_fee_pct:  saleData.feePct      || 0,
+        sold_shipping: saleData.shippingCost || 0,
       });
 
-      const updated = { ...snap.data(), ...changes };
+      let changes;
+      if (currentQty > 1) {
+        // More units remain — decrement and stay available
+        changes = { quantity: currentQty - 1, updated_at: now };
+      } else {
+        // Last unit — mark as sold
+        changes = {
+          status:        'sold',
+          sold_price:    saleData.soldPrice,
+          net_proceeds:  saleData.netProceeds ?? saleData.soldPrice,
+          sold_at:       now,
+          sold_platform: saleData.platform    || null,
+          sold_fee_pct:  saleData.feePct      || 0,
+          sold_shipping: saleData.shippingCost || 0,
+          updated_at:    now,
+        };
+      }
+
+      await updateDoc(ref, changes);
+      const updated = { ...item, ...changes };
       if (_cachedItems) _cachedItems = _cachedItems.map(i => i.id === id ? updated : i);
       return updated;
     },
