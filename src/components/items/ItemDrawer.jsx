@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader } from 'lucide-react';
+import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader, Sparkles } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import StatusBadge from '../shared/StatusBadge.jsx';
 import CategoryBadge from '../categories/CategoryBadge.jsx';
@@ -159,6 +159,8 @@ export default function ItemDrawer({ item, onClose }) {
   const [showSoldModal,  setShowSoldModal]  = useState(false);
   const [showDelete,     setShowDelete]     = useState(false);
   const [copied,         setCopied]         = useState(false);
+  const [generating,     setGenerating]     = useState(false);
+  const [aiDescription,  setAiDescription]  = useState(null);
   const fileInputRef = useRef(null);
 
   const category = categories.find(c => c.id === item.category_id);
@@ -234,6 +236,45 @@ export default function ItemDrawer({ item, onClose }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast?.('Listing text copied', 'success');
+  }
+
+  async function generateDescription() {
+    setGenerating(true);
+    setAiDescription(null);
+    try {
+      const res = await fetch('/api/generate-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:         item.name,
+          make:         item.make,
+          model:        item.model,
+          condition:    item.condition,
+          notes:        item.notes,
+          askingPrice:  item.asking_price,
+          costPrice:    item.cost_price,
+          category:     item.category_id,
+        }),
+      });
+      const data = await res.json();
+      if (data.description) {
+        setAiDescription(data.description);
+      } else {
+        toast?.('Could not generate description — check API key in Vercel', 'error');
+      }
+    } catch {
+      toast?.('Generation failed — are you online?', 'error');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function acceptDescription() {
+    if (aiDescription) {
+      update('notes', aiDescription);
+      setAiDescription(null);
+      toast?.('Description added to notes', 'success');
+    }
   }
 
   const profit = item.status === 'sold' && item.cost_price > 0
@@ -501,6 +542,68 @@ export default function ItemDrawer({ item, onClose }) {
               />
             </Field>
 
+            {/* AI description preview */}
+            <AnimatePresence>
+              {aiDescription && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  style={{
+                    background: 'rgba(212,168,83,0.05)',
+                    border: '1px solid rgba(212,168,83,0.25)',
+                    borderRadius: 10,
+                    padding: '12px 14px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Sparkles size={12} color="var(--accent-gold)" />
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent-gold)' }}>
+                      AI Generated
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, marginBottom: 12, whiteSpace: 'pre-wrap' }}>
+                    {aiDescription}
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={acceptDescription}
+                      style={{
+                        flex: 1, padding: '7px', borderRadius: 7, border: 'none',
+                        background: 'var(--accent-gold)', color: '#000',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      }}
+                    >
+                      <Check size={12} /> Use This
+                    </button>
+                    <button
+                      onClick={generateDescription}
+                      style={{
+                        padding: '7px 12px', borderRadius: 7,
+                        border: '1px solid rgba(212,168,83,0.3)',
+                        background: 'transparent', color: 'var(--accent-gold-dim)',
+                        fontSize: 12, cursor: 'pointer',
+                      }}
+                    >
+                      Retry
+                    </button>
+                    <button
+                      onClick={() => setAiDescription(null)}
+                      style={{
+                        padding: '7px 10px', borderRadius: 7,
+                        border: '1px solid var(--border-subtle)',
+                        background: 'transparent', color: 'var(--text-tertiary)',
+                        fontSize: 12, cursor: 'pointer',
+                      }}
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <Field label="Listing URL">
               <EditableField value={item.listing_url} onChange={v => update('listing_url', v)} placeholder="https://…" />
             </Field>
@@ -557,6 +660,22 @@ export default function ItemDrawer({ item, onClose }) {
               <DollarSign size={14} /> Mark Sold
             </button>
           )}
+          <button
+            onClick={generateDescription}
+            disabled={generating}
+            style={{
+              ...secondaryBtn,
+              borderColor: 'rgba(212,168,83,0.35)',
+              color: generating ? 'var(--text-tertiary)' : 'var(--accent-gold)',
+              background: 'rgba(212,168,83,0.06)',
+              opacity: generating ? 0.7 : 1,
+            }}
+          >
+            {generating
+              ? <><Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</>
+              : <><Sparkles size={13} /> Write Description</>
+            }
+          </button>
           <button onClick={shareItem} style={secondaryBtn}>
             <Share2 size={14} /> Share
           </button>

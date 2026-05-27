@@ -57,6 +57,12 @@ html, body, #root {
   overflow: hidden;
 }
 
+html {
+  /* Prevents the rubber-band / pinch-zoom-out black gap on iOS */
+  overscroll-behavior: none;
+  background: #0a0a0b;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -72,6 +78,15 @@ input, textarea {
   user-select: text;
 }
 
+/* Prevent iOS Safari from auto-zooming when focusing inputs.
+   iOS zooms in if font-size < 16px. max() keeps it visually reasonable
+   while satisfying Safari's zoom threshold. */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar        { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track  { background: transparent; }
@@ -85,10 +100,15 @@ input, textarea {
   border-radius: 4px;
 }
 
-/* Remove 300ms tap delay on buttons — do NOT apply to * (breaks scrolling) */
-button, [role="button"], a {
+/* Remove 300ms tap delay and fix iOS click events */
+button, [role="button"], a, [style*="cursor: pointer"], [style*="cursor:pointer"] {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS Safari requires cursor:pointer for click events to fire on div elements */
+button {
+  cursor: pointer;
 }
 
 /* Spinner animation */

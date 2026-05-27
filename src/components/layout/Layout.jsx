@@ -20,8 +20,8 @@ export default function Layout({ children }) {
           flex: 1,
           overflow: 'auto',
           background: 'var(--bg-base)',
-          // Leave space for bottom nav + safe area
-          paddingBottom: 'calc(64px + env(safe-area-inset-bottom))',
+          // nav pill (~68px) + top margin (8px) + gap from safe area (env)
+          paddingBottom: 'calc(84px + env(safe-area-inset-bottom))',
         }}>
           {children}
         </main>

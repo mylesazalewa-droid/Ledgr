@@ -90,6 +90,39 @@ const DEFAULT_CATEGORIES = [
   { id: 'cat_other',        name: 'Other',        icon: 'Box',    color: '#888891', sort_order: 99 },
 ];
 
+// Module-level helper so storefront methods can call it without `this` dependency
+async function syncStorefrontItemsInternal(u) {
+  // Fetch all user items
+  const snap = await getDocs(query(collection(firestoreDb, 'users', u, 'items'), orderBy('added_at', 'desc')));
+  const allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const available = allItems.filter(i => i.status === 'available' || i.status === 'reserved');
+
+  const sfItemsCol = collection(firestoreDb, 'storefronts', u, 'items');
+
+  // Replace all storefront items in one batch
+  const existingSnap = await getDocs(sfItemsCol);
+  const batch = writeBatch(firestoreDb);
+  existingSnap.docs.forEach(d => batch.delete(d.ref));
+  available.forEach(item => {
+    const sfItemRef = doc(firestoreDb, 'storefronts', u, 'items', item.id);
+    batch.set(sfItemRef, {
+      id:           item.id,
+      name:         item.name         || '',
+      make:         item.make         || null,
+      model:        item.model        || null,
+      condition:    item.condition    || null,
+      asking_price: item.asking_price || 0,
+      photo_url:    item.photo_url    || item.photo_path || null,
+      notes:        item.notes        || null,
+      status:       item.status,
+      quantity:     item.quantity     || 1,
+      location:     item.location     || null,
+      added_at:     item.added_at     || null,
+    });
+  });
+  await batch.commit();
+}
+
 export function createFirestoreAdapter() {
   // Cache items in memory to power getStats without extra round trips
   let _cachedItems = null;
@@ -301,6 +334,69 @@ export function createFirestoreAdapter() {
     async getPhotoDataUrl(urlOrPath) {
       // In web mode, photo_path IS the Firebase Storage URL
       return urlOrPath || null;
+    },
+
+    // ---- Public Storefront ----
+
+    /**
+     * Enable (or update) this user's public storefront.
+     * Writes a public document at storefronts/{uid} and mirrors
+     * all currently-available items to storefronts/{uid}/items/.
+     */
+    async enableStorefront({ displayName, bio, contactInfo }) {
+      const u = uid();
+      if (!u) throw new Error('Not signed in');
+
+      // Write the public profile
+      await setDoc(doc(firestoreDb, 'storefronts', u), {
+        enabled:     true,
+        displayName: displayName || '',
+        bio:         bio         || '',
+        contactInfo: contactInfo || '',
+        updatedAt:   new Date().toISOString(),
+      });
+
+      // Mirror available items (inline to avoid `this` binding issues through Proxy)
+      await syncStorefrontItemsInternal(u);
+      return true;
+    },
+
+    async updateStorefrontProfile({ displayName, bio, contactInfo }) {
+      const u = uid();
+      if (!u) throw new Error('Not signed in');
+      await updateDoc(doc(firestoreDb, 'storefronts', u), {
+        displayName: displayName || '',
+        bio:         bio         || '',
+        contactInfo: contactInfo || '',
+        updatedAt:   new Date().toISOString(),
+      });
+    },
+
+    async disableStorefront() {
+      const u = uid();
+      if (!u) throw new Error('Not signed in');
+      // Mark as disabled — keeps data but hides the page
+      await updateDoc(doc(firestoreDb, 'storefronts', u), {
+        enabled:   false,
+        updatedAt: new Date().toISOString(),
+      }).catch(() => {}); // ignore if doc doesn't exist yet
+    },
+
+    async syncStorefrontItems() {
+      const u = uid();
+      if (!u) return;
+      await syncStorefrontItemsInternal(u);
+    },
+
+    async getStorefrontStatus() {
+      const u = uid();
+      if (!u) return null;
+      try {
+        const snap = await getDoc(doc(firestoreDb, 'storefronts', u));
+        return snap.exists() ? snap.data() : null;
+      } catch {
+        return null;
+      }
     },
 
     // ---- Utils ----

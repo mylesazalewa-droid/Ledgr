@@ -350,6 +350,7 @@ export default function AddItemModal({ onClose }) {
         {/* Footer */}
         <div style={{
           padding: '14px 22px',
+          paddingBottom: isMobile ? 'calc(14px + env(safe-area-inset-bottom))' : '14px',
           borderTop: '1px solid var(--border-subtle)',
           display: 'flex',
           justifyContent: 'space-between',
