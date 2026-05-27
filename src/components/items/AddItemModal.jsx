@@ -5,6 +5,7 @@ import { X, ChevronRight, ChevronLeft, Check,
 import { useApp } from '../../App.jsx';
 import PhotoUpload from '../shared/PhotoUpload.jsx';
 import PriceInput from '../shared/PriceInput.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 const ICON_MAP   = { Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box };
@@ -12,6 +13,7 @@ const STEPS      = ['Photo', 'Category', 'Details', 'Extras'];
 
 export default function AddItemModal({ onClose }) {
   const { addItem, categories } = useApp();
+  const isMobile = useIsMobile();
   const [step,   setStep]   = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -64,30 +66,34 @@ export default function AddItemModal({ onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={e => e.target === e.currentTarget && onClose()}
+      onClick={e => !isMobile && e.target === e.currentTarget && onClose()}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.7)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: isMobile ? 'var(--bg-surface)' : 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        justifyContent: 'center',
         zIndex: 300,
-        backdropFilter: 'blur(6px)',
+        backdropFilter: isMobile ? 'none' : 'blur(6px)',
       }}
     >
       <motion.div
-        initial={{ scale: 0.92, opacity: 0 }}
-        animate={{ scale: 1,    opacity: 1 }}
-        exit={{ scale: 0.92,   opacity: 0 }}
+        initial={isMobile ? { y: 40, opacity: 0 } : { scale: 0.92, opacity: 0 }}
+        animate={isMobile ? { y: 0,  opacity: 1 } : { scale: 1,    opacity: 1 }}
+        exit={isMobile   ? { y: 40,  opacity: 0 } : { scale: 0.92, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         style={{
           background: 'var(--bg-surface)',
-          borderRadius: 'var(--radius-modal)',
-          width: 480,
-          maxHeight: '85vh',
-          border: '1px solid var(--border-subtle)',
-          boxShadow: 'var(--shadow-float)',
+          borderRadius: isMobile ? 0 : 'var(--radius-modal)',
+          width: isMobile ? '100%' : 480,
+          height: isMobile ? '100dvh' : undefined,
+          maxHeight: isMobile ? '100dvh' : '85vh',
+          border: isMobile ? 'none' : '1px solid var(--border-subtle)',
+          boxShadow: isMobile ? 'none' : 'var(--shadow-float)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          paddingTop: isMobile ? 'env(safe-area-inset-top)' : undefined,
         }}
       >
         {/* Header */}
