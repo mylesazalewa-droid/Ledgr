@@ -3,21 +3,21 @@ import { Image, Upload, Camera, Loader, AlertCircle } from 'lucide-react';
 import { storage, isElectron } from '../../services/storage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
-// Resize + compress any image to JPEG before uploading.
-// Fixes iOS HEIC compatibility issues and keeps file sizes small.
+// Resize + compress any image before uploading.
+// Max 900px wide, JPEG 70% quality → typically 60–150 KB.
 function compressImage(file) {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1200;
+      const MAX = 900;
       const scale = img.width > MAX ? MAX / img.width : 1;
       const canvas = document.createElement('canvas');
       canvas.width  = Math.round(img.width  * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.78);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.70);
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
