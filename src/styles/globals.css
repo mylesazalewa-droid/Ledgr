@@ -117,6 +117,32 @@ button {
   to   { transform: rotate(360deg); }
 }
 
+/*
+ * Mobile modal slide-up entry.
+ * Using a CSS @keyframe (not Framer Motion) is critical: Framer Motion's spring
+ * leaves a live JS-driven transform on the element that iOS uses to miscalculate
+ * touch hit-test areas, making all child buttons unresponsive. CSS animations
+ * end cleanly with no residual JS transform, so touch events work correctly.
+ */
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(48px);
+    opacity: 0;
+  }
+  /* 'to' is intentionally omitted — the element's natural styles apply at rest,
+     which have no transform, so the compositing layer is released. */
+}
+
+.modal-mobile-enter {
+  /*
+   * fill-mode: backwards — applies the 'from' frame before the animation starts
+   * (prevents flash) but does NOT keep any animation override after it ends.
+   * The element fully reverts to its natural styles (no transform, no compositing
+   * layer) so iOS touch hit-testing is unaffected.
+   */
+  animation: modalSlideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+
 /* Hide scrollbars on stat chip rows etc */
 .no-scrollbar {
   scrollbar-width: none;
