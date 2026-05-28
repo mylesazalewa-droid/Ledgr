@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Package, Plus } from 'lucide-react';
 import { useApp } from '../../App.jsx';
@@ -10,6 +11,7 @@ export default function EmptyState({
   actionLabel = 'Add Item',
 }) {
   const { setShowAddModal } = useApp();
+  const [pressed, setPressed] = useState(false);
 
   return (
     <motion.div
@@ -21,53 +23,76 @@ export default function EmptyState({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 16,
+        gap: 20,
         padding: 60,
         textAlign: 'center',
         height: '100%',
         minHeight: 300,
       }}
     >
-      <div style={{
-        width: 64,
-        height: 64,
-        borderRadius: 18,
-        background: 'var(--bg-surface)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        border: '1px solid var(--border-subtle)',
-      }}>
-        <Icon size={28} color="var(--text-tertiary)" />
+      {/* Floating icon with glow */}
+      <div className="icon-float" style={{ position: 'relative' }}>
+        {/* Glow backdrop */}
+        <div style={{
+          position: 'absolute',
+          inset: -12,
+          borderRadius: 30,
+          background: 'radial-gradient(circle, rgba(255,203,116,0.12) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          width: 72,
+          height: 72,
+          borderRadius: 22,
+          background: 'var(--bg-surface)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px solid rgba(255,203,116,0.15)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+          position: 'relative',
+        }}>
+          <Icon size={30} color="var(--text-tertiary)" />
+        </div>
       </div>
+
       <div>
-        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 7 }}>
           {title}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 280 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 260, lineHeight: 1.6 }}>
           {description}
         </div>
       </div>
+
       {action !== false && (
-        <button
+        <motion.button
+          whileTap={{ scale: 0.94 }}
+          onMouseDown={() => setPressed(true)}
+          onMouseUp={() => setPressed(false)}
+          onMouseLeave={() => setPressed(false)}
           onClick={action || (() => setShowAddModal(true))}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
-            padding: '8px 18px',
-            borderRadius: 10,
-            border: '1px solid var(--border-accent)',
-            background: 'rgba(212,168,83,0.08)',
+            gap: 7,
+            padding: '10px 22px',
+            borderRadius: 14,
+            border: '1px solid rgba(255,203,116,0.3)',
+            background: pressed ? 'rgba(255,203,116,0.14)' : 'rgba(255,203,116,0.08)',
             color: 'var(--accent-gold)',
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 600,
             cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            transition: 'background 100ms',
+            boxShadow: '0 0 20px rgba(255,203,116,0.08)',
           }}
         >
-          <Plus size={14} />
+          <Plus size={15} />
           {actionLabel}
-        </button>
+        </motion.button>
       )}
     </motion.div>
   );

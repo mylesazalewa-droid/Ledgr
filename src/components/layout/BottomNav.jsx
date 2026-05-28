@@ -25,22 +25,14 @@ export default function BottomNav() {
       left: 0,
       right: 0,
       zIndex: 200,
-      // The background here fills the safe-area strip below the pill.
-      // The 200px overflow below ensures iOS keyboard-dismiss snap never
-      // reveals a gap — the extra area is clipped by the screen edge.
       background: 'var(--bg-void)',
       paddingBottom: 'env(safe-area-inset-bottom)',
       overflow: 'visible',
     }}>
-      {/* This invisible div extends the bg-void fill far below the screen */}
+      {/* Fills the safe-area strip below so no gap shows on iOS */}
       <div style={{
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        right: 0,
-        height: 200,
-        background: 'var(--bg-void)',
-        pointerEvents: 'none',
+        position: 'absolute', top: '100%', left: 0, right: 0,
+        height: 200, background: 'var(--bg-void)', pointerEvents: 'none',
       }} />
 
       {/* Floating pill */}
@@ -59,25 +51,33 @@ export default function BottomNav() {
 
         {/* Centre FAB */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => setShowAddModal(true)}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 16,
-              background: 'var(--accent-gold)',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(212,168,83,0.45)',
-              touchAction: 'manipulation',
-            }}
-          >
-            <Plus size={24} color="#0a0a0b" strokeWidth={2.5} />
-          </motion.button>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Pulse rings — draw attention to the add button */}
+            <div className="fab-ring" style={{ borderRadius: 16 }} />
+            <div className="fab-ring fab-ring-2" style={{ borderRadius: 16 }} />
+
+            <motion.button
+              whileTap={{ scale: 0.86 }}
+              onClick={() => setShowAddModal(true)}
+              style={{
+                position: 'relative',
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background: 'var(--accent-gold)',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(255,203,116,0.4)',
+                touchAction: 'manipulation',
+                zIndex: 1,
+              }}
+            >
+              <Plus size={24} color="#111111" strokeWidth={2.5} />
+            </motion.button>
+          </div>
         </div>
 
         {NAV_ITEMS.slice(2).map(item => (
@@ -91,28 +91,58 @@ export default function BottomNav() {
 function NavTab({ item, active, onPress }) {
   const Icon = item.icon;
   return (
-    <button
+    <motion.button
       onClick={onPress}
+      whileTap={{ scale: 0.78 }}
       style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: 3,
-        padding: '12px 0 10px',
+        padding: '10px 0',
         background: 'none',
         border: 'none',
         cursor: 'pointer',
         color: active ? 'var(--accent-gold)' : 'var(--text-tertiary)',
         touchAction: 'manipulation',
         WebkitTapHighlightColor: 'transparent',
-        transition: 'color 120ms',
+        transition: 'color 150ms',
       }}
     >
-      <Icon size={20} strokeWidth={active ? 2.2 : 1.5} />
-      <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, letterSpacing: active ? '0.01em' : 0 }}>
+      {/* Icon with active highlight pill */}
+      <div style={{
+        position: 'relative',
+        width: 38,
+        height: 28,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {active && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 10,
+            background: 'rgba(255,203,116,0.13)',
+            border: '1px solid rgba(255,203,116,0.18)',
+          }} />
+        )}
+        <Icon
+          size={20}
+          strokeWidth={active ? 2.3 : 1.5}
+          style={{ position: 'relative', zIndex: 1, transition: 'stroke-width 150ms' }}
+        />
+      </div>
+
+      <span style={{
+        fontSize:      10,
+        fontWeight:    active ? 700 : 400,
+        letterSpacing: active ? '0.02em' : 0,
+        transition:    'font-weight 150ms',
+      }}>
         {item.label}
       </span>
-    </button>
+    </motion.button>
   );
 }

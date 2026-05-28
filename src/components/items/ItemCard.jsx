@@ -144,7 +144,9 @@ export default function ItemCard({ item, index = 0, bulkMode = false, selected =
   const [showSell,     setShowSell]     = useState(false);
   const [showDelete,   setShowDelete]   = useState(false);
   const [visible,      setVisible]      = useState(false);
-  const cardRef = useRef(null);
+  const cardRef          = useRef(null);
+  const longPressTimer   = useRef(null);
+  const longPressDidFire = useRef(false);
 
   const category = categories.find(c => c.id === item.category_id);
 
@@ -182,20 +184,43 @@ export default function ItemCard({ item, index = 0, bulkMode = false, selected =
     setMenu({ x: e.clientX, y: e.clientY });
   }
 
+  // Long-press on mobile — mirrors right-click context menu
+  function onTouchStart(e) {
+    if (bulkMode) return;
+    longPressDidFire.current = false;
+    const touch = e.touches[0];
+    longPressTimer.current = setTimeout(() => {
+      longPressDidFire.current = true;
+      navigator.vibrate?.(12);
+      setMenu({ x: touch.clientX, y: touch.clientY });
+    }, 480);
+  }
+  function onTouchEnd()  { clearTimeout(longPressTimer.current); }
+  function onTouchMove() { clearTimeout(longPressTimer.current); }
+
+  function handleClick() {
+    if (longPressDidFire.current) { longPressDidFire.current = false; return; }
+    if (bulkMode) { onToggleSelect?.(item.id); } else { setSelectedItem(item); }
+  }
+
   const closeMenu = useCallback(() => setMenu(null), []);
 
   return (
     <>
       <motion.div
         ref={cardRef}
-        onClick={() => bulkMode ? onToggleSelect?.(item.id) : setSelectedItem(item)}
+        onClick={handleClick}
         onContextMenu={bulkMode ? undefined : onContextMenu}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchMove={onTouchMove}
         onHoverStart={() => setHovered(true)}
         onHoverEnd={() => setHovered(false)}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.3) }}
         whileHover={{ y: -3, transition: { duration: 0.08 } }}
+        whileTap={{ scale: 0.96, transition: { duration: 0.1 } }}
         style={{
           background: 'var(--bg-surface)',
           borderRadius: 'var(--radius-card)',

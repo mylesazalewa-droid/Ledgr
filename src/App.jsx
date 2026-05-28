@@ -185,10 +185,13 @@ function AppInner() {
     <AppContext.Provider value={ctx}>
       <Layout>
         <ErrorBoundary>
-          {currentPage === 'dashboard' && <Dashboard />}
-          {currentPage === 'inventory' && <Inventory />}
-          {currentPage === 'sold'      && <Sold />}
-          {currentPage === 'settings'  && <Settings />}
+          {/* key forces remount + re-triggers .page-enter animation on tab switch */}
+          <div key={currentPage} className="page-enter" style={{ height: '100%' }}>
+            {currentPage === 'dashboard' && <Dashboard />}
+            {currentPage === 'inventory' && <Inventory />}
+            {currentPage === 'sold'      && <Sold />}
+            {currentPage === 'settings'  && <Settings />}
+          </div>
         </ErrorBoundary>
       </Layout>
 
