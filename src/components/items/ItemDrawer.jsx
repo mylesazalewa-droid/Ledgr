@@ -262,7 +262,9 @@ export default function ItemDrawer({ item, onClose }) {
       if (data.description) {
         setAiDescription(data.description);
       } else {
-        toast?.('Could not generate description — check API key in Vercel', 'error');
+        const detail = data.detail?.error?.message || data.error || 'Unknown error';
+        toast?.(`AI error: ${detail}`, 'error');
+        console.error('generate-listing response:', data);
       }
     } catch {
       toast?.('Generation failed — are you online?', 'error');
