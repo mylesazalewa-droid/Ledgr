@@ -606,11 +606,6 @@ function ItemOverlay({ item, onClose, sellerContact }) {
                 {item.condition}
               </span>
             )}
-            {item.location && (
-              <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-secondary)' }}>
-                📍 {item.location}
-              </span>
-            )}
             {(item.quantity || 1) > 1 && (
               <span style={{ fontSize: 11, fontWeight: 600, background: 'rgba(212,168,83,0.1)', border: '1px solid rgba(212,168,83,0.2)', borderRadius: 6, padding: '3px 10px', color: 'var(--accent-gold)' }}>
                 {item.quantity} available
