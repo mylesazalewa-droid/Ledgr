@@ -24,30 +24,26 @@ export function useItems() {
     return () => unsubscribe?.();
   }, []);
 
+  // With onSnapshot as the source of truth, mutations just fire the write.
+  // The subscription delivers the updated list automatically — no local setItems
+  // needed (and doing so would cause every entry to appear twice).
   const addItem = useCallback(async (item) => {
-    const newItem = await storage.addItem(item);
-    setItems(prev => [newItem, ...prev]);
-    return newItem;
+    return await storage.addItem(item);
   }, []);
 
   const updateItem = useCallback(async (id, changes) => {
-    const updated = await storage.updateItem(id, changes);
-    setItems(prev => prev.map(i => i.id === id ? updated : i));
-    return updated;
+    return await storage.updateItem(id, changes);
   }, []);
 
   const deleteItem = useCallback(async (id) => {
     await storage.deleteItem(id);
-    setItems(prev => prev.filter(i => i.id !== id));
   }, []);
 
   const markSold = useCallback(async (id, saleData) => {
-    const updated = await storage.markSold(id, saleData);
-    setItems(prev => prev.map(i => i.id === id ? updated : i));
-    return updated;
+    return await storage.markSold(id, saleData);
   }, []);
 
-  // refetch is kept for Electron compatibility and manual refresh needs
+  // refetch kept for Electron and manual-refresh callers
   const refetch = useCallback(async () => {
     try {
       const data = await storage.getItems({});
