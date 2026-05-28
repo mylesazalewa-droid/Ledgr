@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-void:     #0a0a0b;
-  --color-bg-base:     #111113;
-  --color-bg-surface:  #18181c;
-  --color-bg-elevated: #222228;
+  --color-bg-void:     #111111;
+  --color-bg-base:     #161616;
+  --color-bg-surface:  #1c1c1c;
+  --color-bg-elevated: #2f2f2f;
 
-  --color-gold:        #d4a853;
-  --color-gold-dim:    #8a6a2e;
+  --color-gold:        #ffcb74;
+  --color-gold-dim:    #c8943a;
   --color-green:       #4caf7d;
   --color-red:         #e05c5c;
   --color-blue:        #5b8ef0;
 
-  --color-text-primary:   #f0efe8;
-  --color-text-secondary: #888891;
-  --color-text-tertiary:  #44444d;
+  --color-text-primary:   #f6f6f6;
+  --color-text-secondary: #9a9a9a;
+  --color-text-tertiary:  #555555;
 
   --font-display: 'Instrument Serif', serif;
   --font-body:    'Inter', sans-serif;
@@ -22,24 +22,24 @@
 }
 
 :root {
-  --bg-void:     #0a0a0b;
-  --bg-base:     #111113;
-  --bg-surface:  #18181c;
-  --bg-elevated: #222228;
+  --bg-void:     #111111;
+  --bg-base:     #161616;
+  --bg-surface:  #1c1c1c;
+  --bg-elevated: #2f2f2f;
   --bg-overlay:  rgba(255, 255, 255, 0.04);
 
-  --accent-gold:     #d4a853;
-  --accent-gold-dim: #8a6a2e;
+  --accent-gold:     #ffcb74;
+  --accent-gold-dim: rgba(255, 203, 116, 0.45);
   --accent-green:    #4caf7d;
   --accent-red:      #e05c5c;
   --accent-blue:     #5b8ef0;
 
-  --text-primary:   #f0efe8;
-  --text-secondary: #888891;
-  --text-tertiary:  #44444d;
+  --text-primary:   #f6f6f6;
+  --text-secondary: #9a9a9a;
+  --text-tertiary:  #555555;
 
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-accent: rgba(212, 168, 83, 0.25);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-accent: rgba(255, 203, 116, 0.25);
 
   --radius-card:  14px;
   --radius-modal: 18px;
@@ -60,7 +60,7 @@ html, body, #root {
 html {
   /* Prevents the rubber-band / pinch-zoom-out black gap on iOS */
   overscroll-behavior: none;
-  background: #0a0a0b;
+  background: #111111;
 }
 
 body {

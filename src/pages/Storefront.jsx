@@ -18,17 +18,17 @@ const GLOBAL_STYLES = `
   @keyframes sfFadeIn { from { opacity: 0; transform: translateY(8px); } }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a0b; color: #e8e8ea; }
+  body { background: #111111; color: #f6f6f6; }
 
   :root {
-    --accent-gold:     #d4a853;
-    --accent-gold-dim: rgba(212,168,83,0.6);
+    --accent-gold:     #ffcb74;
+    --accent-gold-dim: rgba(255,203,116,0.5);
     --accent-green:    #4caf7d;
-    --text-primary:    #e8e8ea;
-    --text-secondary:  #9b9ba8;
-    --text-tertiary:   #5a5a6a;
-    --bg-surface:      #111115;
-    --bg-elevated:     #1a1a20;
+    --text-primary:    #f6f6f6;
+    --text-secondary:  #9a9a9a;
+    --text-tertiary:   #555555;
+    --bg-surface:      #1c1c1c;
+    --bg-elevated:     #2f2f2f;
     --border-subtle:   rgba(255,255,255,0.07);
     --font-mono:       'JetBrains Mono', 'Fira Code', monospace;
   }
@@ -648,7 +648,7 @@ function ItemOverlay({ item, onClose, sellerContact }) {
 
 const pageStyle = {
   minHeight: '100vh',
-  background: '#0a0a0b',
-  color: '#e8e8ea',
+  background: '#111111',
+  color: '#f6f6f6',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
