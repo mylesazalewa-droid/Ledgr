@@ -5,19 +5,173 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase.js';
 
 function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
 }
 
+// CSS injected once — always present so CSS vars work during loading/error states too
+const GLOBAL_STYLES = `
+  @keyframes spin     { to { transform: rotate(360deg); } }
+  @keyframes sfFadeIn { from { opacity: 0; transform: translateY(8px); } }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0b; color: #e8e8ea; }
+
+  :root {
+    --accent-gold:     #d4a853;
+    --accent-gold-dim: rgba(212,168,83,0.6);
+    --accent-green:    #4caf7d;
+    --text-primary:    #e8e8ea;
+    --text-secondary:  #9b9ba8;
+    --text-tertiary:   #5a5a6a;
+    --bg-surface:      #111115;
+    --bg-elevated:     #1a1a20;
+    --border-subtle:   rgba(255,255,255,0.07);
+    --font-mono:       'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  /* ── Card interactions ───────────────────────────────────────── */
+  .sf-card {
+    cursor: pointer;
+    transition: border-color 150ms, box-shadow 150ms, transform 150ms, opacity 150ms;
+  }
+  /* Hover only on pointer devices — prevents stuck-hover bug on iOS touch */
+  @media (hover: hover) and (pointer: fine) {
+    .sf-card:hover {
+      border-color: rgba(212,168,83,0.35) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .sf-card:hover .sf-card-img {
+      transform: scale(1.05);
+    }
+  }
+  /* Touch active feedback */
+  .sf-card:active { opacity: 0.75; transform: scale(0.98); }
+
+  /* ── Item grid ───────────────────────────────────────────────── */
+  /* 2 columns on phones, auto-fill on larger screens */
+  .sf-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (min-width: 540px) {
+    .sf-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  }
+
+  /* ── Item image ──────────────────────────────────────────────── */
+  .sf-card-img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 250ms;
+  }
+
+  /* ── Overlay backdrop ───────────────────────────────────────── */
+  /* Mobile: sheet slides from bottom; desktop: centered modal */
+  .sf-overlay-backdrop {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  @media (min-width: 600px) {
+    .sf-overlay-backdrop { align-items: center; padding: 20px; }
+  }
+
+  /* ── Overlay panel ───────────────────────────────────────────── */
+  .sf-overlay-panel {
+    position: relative;
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    animation: sfFadeIn 0.2s ease;
+  }
+  @media (min-width: 600px) {
+    .sf-overlay-panel {
+      border-radius: 18px;
+      max-height: min(90vh, 700px);
+      max-width: 480px;
+    }
+  }
+
+  /* ── Close button ────────────────────────────────────────────── */
+  /* 44px touch target with centered 32px visual */
+  .sf-close-btn {
+    position: relative;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    margin: -6px -6px -6px 0;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sf-close-btn-inner {
+    width: 32px; height: 32px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Share/copy button ───────────────────────────────────────── */
+  .sf-share-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 150ms, color 150ms;
+  }
+  .sf-share-btn:active { opacity: 0.7; }
+
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .sf-btn-primary {
+    display: flex; align-items: center; justify-content: center;
+    padding: 13px;
+    border-radius: 12px;
+    background: var(--accent-gold);
+    color: #000;
+    font-size: 14px; font-weight: 700;
+    text-decoration: none;
+    border: none; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 150ms;
+  }
+  .sf-btn-primary:active { opacity: 0.8; }
+
+  .sf-btn-secondary {
+    display: flex; align-items: center; justify-content: center;
+    padding: 11px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 150ms, opacity 150ms;
+  }
+  .sf-btn-secondary:active { opacity: 0.7; }
+`;
+
 export default function Storefront({ userId }) {
-  const [storefront, setStorefront] = useState(null);   // { displayName, bio, contactInfo }
+  const [storefront, setStorefront] = useState(null);
   const [items,      setItems]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
   const [selected,   setSelected]   = useState(null);
+  const [copied,     setCopied]     = useState(false);
 
   useEffect(() => {
     if (!userId) { setError('Storefront not found.'); setLoading(false); return; }
@@ -26,7 +180,6 @@ export default function Storefront({ userId }) {
 
   async function loadStorefront() {
     try {
-      // Fetch seller profile
       const profileSnap = await getDoc(doc(db, 'storefronts', userId));
       if (!profileSnap.exists() || !profileSnap.data().enabled) {
         setError('This storefront is not available.');
@@ -35,7 +188,6 @@ export default function Storefront({ userId }) {
       }
       setStorefront(profileSnap.data());
 
-      // Fetch available items
       const itemsSnap = await getDocs(
         query(collection(db, 'storefronts', userId, 'items'), orderBy('added_at', 'desc'))
       );
@@ -48,9 +200,25 @@ export default function Storefront({ userId }) {
     }
   }
 
+  function handleShare() {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: `${storefront?.displayName || 'Stash'} Shop`, url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(url).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {});
+    }
+  }
+
+  // Always inject CSS (so CSS vars are available during loading/error states)
+  const styleTag = <style>{GLOBAL_STYLES}</style>;
+
   if (loading) {
     return (
       <div style={pageStyle}>
+        {styleTag}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
           <div style={{ width: 32, height: 32, border: '2px solid var(--accent-gold)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         </div>
@@ -61,6 +229,7 @@ export default function Storefront({ userId }) {
   if (error) {
     return (
       <div style={pageStyle}>
+        {styleTag}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
           <div style={{ fontSize: 32 }}>🔒</div>
           <div style={{ fontSize: 15, color: 'var(--text-secondary)' }}>{error}</div>
@@ -73,60 +242,72 @@ export default function Storefront({ userId }) {
 
   return (
     <div style={pageStyle}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0a0a0b; color: #e8e8ea; }
-        :root {
-          --accent-gold: #d4a853;
-          --accent-gold-dim: rgba(212,168,83,0.6);
-          --accent-green: #4caf7d;
-          --text-primary: #e8e8ea;
-          --text-secondary: #9b9ba8;
-          --text-tertiary: #5a5a6a;
-          --bg-surface: #111115;
-          --bg-elevated: #1a1a20;
-          --border-subtle: rgba(255,255,255,0.07);
-          --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-        }
-      `}</style>
+      {styleTag}
 
       {/* Header */}
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', marginBottom: 32 }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent-gold)', letterSpacing: '-0.01em' }}>
-              {storefront.displayName || 'Stash Shop'}
-            </span>
-            <span style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-              color: '#0a0a0b', background: 'var(--accent-gold)', borderRadius: 4, padding: '2px 7px',
-            }}>
-              {availableItems.length} items
-            </span>
+      <div style={{ borderBottom: '1px solid var(--border-subtle)', marginBottom: 24 }}>
+        <div style={{
+          maxWidth: 960, margin: '0 auto',
+          padding: `calc(16px + env(safe-area-inset-top, 0px)) 20px 16px`,
+        }}>
+          {/* Row 1: name + share */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-gold)', letterSpacing: '-0.01em' }}>
+                  {storefront.displayName || 'Stash Shop'}
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  color: '#0a0a0b', background: 'var(--accent-gold)', borderRadius: 4, padding: '2px 7px',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {availableItems.length} {availableItems.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+              {storefront.bio && (
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 3 }}>
+                  {storefront.bio}
+                </p>
+              )}
+              {storefront.contactInfo && (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                  Contact: <span style={{ color: 'var(--text-secondary)' }}>{storefront.contactInfo}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Share button */}
+            <button className="sf-share-btn" onClick={handleShare} style={{ flexShrink: 0 }}>
+              {copied ? (
+                <span style={{ color: 'var(--accent-green)' }}>Copied!</span>
+              ) : (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                  Share shop
+                </>
+              )}
+            </button>
           </div>
-          {storefront.bio && (
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{storefront.bio}</p>
-          )}
-          {storefront.contactInfo && (
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
-              Contact: <span style={{ color: 'var(--text-secondary)' }}>{storefront.contactInfo}</span>
-            </p>
-          )}
-          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>
+
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
             Powered by <span style={{ color: 'var(--accent-gold-dim)' }}>Stash</span>
           </div>
         </div>
       </div>
 
       {/* Item grid */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 20px 60px' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: `0 16px calc(60px + env(safe-area-inset-bottom, 0px))` }}>
         {availableItems.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '60px 0', fontSize: 14 }}>
-            No items available right now — check back soon!
+          <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '60px 0 20px', fontSize: 14 }}>
+            <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.4 }}>📦</div>
+            No items listed yet — check back soon.
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+          <div className="sf-grid">
             {availableItems.map(item => (
               <StorefrontCard key={item.id} item={item} onSelect={setSelected} />
             ))}
@@ -143,55 +324,49 @@ export default function Storefront({ userId }) {
 }
 
 function StorefrontCard({ item, onSelect }) {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <div
+      className="sf-card"
       onClick={() => onSelect(item)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
         background: 'var(--bg-surface)',
-        border: `1px solid ${hovered ? 'rgba(212,168,83,0.3)' : 'var(--border-subtle)'}`,
+        border: '1px solid var(--border-subtle)',
         borderRadius: 14,
         overflow: 'hidden',
-        cursor: 'pointer',
-        transition: 'border-color 150ms, transform 150ms, box-shadow 150ms',
-        transform: hovered ? 'translateY(-2px)' : 'none',
-        boxShadow: hovered ? '0 8px 24px rgba(0,0,0,0.3)' : 'none',
       }}
     >
       {/* Photo */}
       <div style={{ width: '100%', aspectRatio: '4/3', background: 'var(--bg-elevated)', overflow: 'hidden' }}>
         {item.photo_url || item.photo_path ? (
           <img
+            className="sf-card-img"
             src={item.photo_url || item.photo_path}
             alt={item.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 250ms', transform: hovered ? 'scale(1.04)' : 'scale(1)' }}
+            loading="lazy"
           />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 28, opacity: 0.3 }}>📦</span>
+            <span style={{ fontSize: 28, opacity: 0.25 }}>📦</span>
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div style={{ padding: '12px 14px' }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ padding: '10px 12px' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {item.name}
         </div>
         {(item.make || item.model) && (
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {[item.make, item.model].filter(Boolean).join(' ')}
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: 'var(--accent-gold)' }}>
-            {item.asking_price > 0 ? fmt(item.asking_price) : 'Make offer'}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--accent-gold)' }}>
+            {item.asking_price > 0 ? fmt(item.asking_price) : 'Offer'}
           </span>
           {item.condition && (
-            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', borderRadius: 5, padding: '2px 7px' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>
               {item.condition}
             </span>
           )}
@@ -202,12 +377,17 @@ function StorefrontCard({ item, onSelect }) {
 }
 
 function ItemOverlay({ item, onClose, sellerContact }) {
-  // Close on backdrop click
   function handleBackdrop(e) {
     if (e.target === e.currentTarget) onClose();
   }
 
-  // Close on Escape
+  useEffect(() => {
+    // Prevent body scroll while overlay is open
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
     window.addEventListener('keydown', onKey);
@@ -230,28 +410,25 @@ function ItemOverlay({ item, onClose, sellerContact }) {
     }
   }
 
+  const contactHref = sellerContact
+    ? (sellerContact.includes('@') ? `mailto:${sellerContact}` : `tel:${sellerContact}`)
+    : null;
+
   return (
     <div
+      className="sf-overlay-backdrop"
       onClick={handleBackdrop}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.65)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
+        background: 'rgba(0,0,0,0.7)',
       }}
     >
-      <div style={{
+      <div className="sf-overlay-panel" style={{
         background: 'var(--bg-surface)',
         border: '1px solid var(--border-subtle)',
-        borderRadius: 18,
-        overflow: 'hidden',
-        width: '100%',
-        maxWidth: 480,
-        maxHeight: '90vh',
-        overflowY: 'auto',
       }}>
         {/* Photo */}
-        <div style={{ width: '100%', aspectRatio: '4/3', background: 'var(--bg-elevated)' }}>
+        <div style={{ width: '100%', aspectRatio: '4/3', background: 'var(--bg-elevated)', flexShrink: 0 }}>
           {item.photo_url || item.photo_path ? (
             <img
               src={item.photo_url || item.photo_path}
@@ -265,10 +442,11 @@ function ItemOverlay({ item, onClose, sellerContact }) {
           )}
         </div>
 
-        <div style={{ padding: '20px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1.2 }}>
+        <div style={{ padding: '20px 20px 24px' }}>
+          {/* Title row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3, lineHeight: 1.2 }}>
                 {item.name}
               </h2>
               {(item.make || item.model) && (
@@ -277,19 +455,20 @@ function ItemOverlay({ item, onClose, sellerContact }) {
                 </div>
               )}
             </div>
-            <button
-              onClick={onClose}
-              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            >
-              <span style={{ color: 'var(--text-secondary)', fontSize: 16, lineHeight: 1 }}>×</span>
+            <button className="sf-close-btn" onClick={onClose} aria-label="Close">
+              <div className="sf-close-btn-inner">
+                <span style={{ color: 'var(--text-secondary)', fontSize: 18, lineHeight: 1, marginTop: -1 }}>×</span>
+              </div>
             </button>
           </div>
 
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, color: 'var(--accent-gold)', marginBottom: 16 }}>
+          {/* Price */}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, color: 'var(--accent-gold)', marginBottom: 14 }}>
             {item.asking_price > 0 ? fmt(item.asking_price) : 'Make offer'}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {/* Tags */}
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
             {item.condition && (
               <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-secondary)' }}>
                 {item.condition}
@@ -307,23 +486,17 @@ function ItemOverlay({ item, onClose, sellerContact }) {
             )}
           </div>
 
+          {/* Notes */}
           {item.notes && (
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
               {item.notes}
             </p>
           )}
 
+          {/* Actions */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sellerContact ? (
-              <a
-                href={sellerContact.includes('@') ? `mailto:${sellerContact}` : `tel:${sellerContact}`}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '11px', borderRadius: 10,
-                  background: 'var(--accent-gold)', color: '#000',
-                  fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                }}
-              >
+            {contactHref ? (
+              <a href={contactHref} className="sf-btn-primary">
                 Contact Seller
               </a>
             ) : (
@@ -331,15 +504,7 @@ function ItemOverlay({ item, onClose, sellerContact }) {
                 Message the seller to purchase this item.
               </div>
             )}
-            <button
-              onClick={shareItem}
-              style={{
-                padding: '9px', borderRadius: 10,
-                border: '1px solid var(--border-subtle)',
-                background: 'transparent', color: 'var(--text-secondary)',
-                fontSize: 13, cursor: 'pointer',
-              }}
-            >
+            <button className="sf-btn-secondary" onClick={shareItem}>
               Share Item
             </button>
           </div>
