@@ -21,5 +21,13 @@ service cloud.firestore {
         allow write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // ── Buyer messages ───────────────────────────────────────────────────────
+    // Anyone can send a message to a seller (buyers don't need an account).
+    // Only the authenticated seller can read, update, or delete their messages.
+    match /messages/{sellerId}/inbox/{messageId} {
+      allow create:               if true;
+      allow read, update, delete: if request.auth != null && request.auth.uid == sellerId;
+    }
   }
 }

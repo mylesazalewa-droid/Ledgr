@@ -20,6 +20,7 @@ import { computeStats } from './utils/computeStats.js';
 import { isFirebaseConfigured, auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ACHIEVEMENTS, getUnlocked, getSeenIds, markSeen } from './utils/achievements.js';
+import { requestPushPermission } from './services/notifications.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -235,6 +236,14 @@ function AppInner() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedItem, showAddModal]);
+
+  // ── Push notifications ─────────────────────────────────────────────────────
+  // Ask for permission after a short delay so it doesn't interrupt first load.
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    const t = setTimeout(() => requestPushPermission(), 4000);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openQuickAdd() {
     setAddModalQuick(true);
