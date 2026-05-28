@@ -164,7 +164,7 @@ function compressImage(file) {
 }
 
 export default function ItemDrawer({ item, onClose }) {
-  const { updateItem, markSold, deleteItem, categories, homes, toast } = useApp();
+  const { updateItem, markSold, deleteItem, categories, toast } = useApp();
   const isMobile = useIsMobile();
   const [photoDataUrl,   setPhotoDataUrl]   = useState(null);
   const [photoHovered,   setPhotoHovered]   = useState(false);
@@ -1002,36 +1002,6 @@ export default function ItemDrawer({ item, onClose }) {
                 })}
               </div>
             </Field>
-
-            {/* ── Property (only shown when multiple homes exist) ── */}
-            {homes?.length > 1 && (
-              <Field label="Property">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {homes.map(h => {
-                    const firstHomeId = homes[0]?.id;
-                    const itemHome = item.home_id || firstHomeId;
-                    const active   = itemHome === h.id;
-                    return (
-                      <button
-                        key={h.id}
-                        onClick={() => update('home_id', h.id)}
-                        style={{
-                          padding: '3px 10px', borderRadius: 20,
-                          fontSize: 10, fontWeight: active ? 600 : 400,
-                          cursor: 'pointer',
-                          border: `1px solid ${active ? 'rgba(255,203,116,0.5)' : 'var(--border-subtle)'}`,
-                          background: active ? 'rgba(255,203,116,0.1)' : 'transparent',
-                          color: active ? 'var(--accent-gold)' : 'var(--text-tertiary)',
-                          transition: 'all 80ms',
-                        }}
-                      >
-                        {h.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Field>
-            )}
 
             {/* ── Delete ── */}
             <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>

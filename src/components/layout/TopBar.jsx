@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { Search, X, ChevronDown, Check, Plus } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
@@ -8,22 +8,195 @@ const PAGE_TITLES = {
   inventory: 'Inventory',
   sold:      'Sold Items',
   settings:  'Settings',
+  house:     'Map',
 };
 
+// ── Home picker dropdown ──────────────────────────────────────────────────────
+function HomePicker({ onClose }) {
+  const { homes, activeHomeId, setActiveHomeId, addHome, updateHome, deleteHome } = useApp();
+  const isMobile = useIsMobile();
+  const [addingNew,    setAddingNew]    = useState(false);
+  const [newName,      setNewName]      = useState('');
+  const [editingId,    setEditingId]    = useState(null);
+  const [editName,     setEditName]     = useState('');
+  const newInputRef  = useRef(null);
+  const editInputRef = useRef(null);
+  const overlayRef   = useRef(null);
+
+  useEffect(() => {
+    if (addingNew) newInputRef.current?.focus();
+  }, [addingNew]);
+
+  useEffect(() => {
+    if (editingId) editInputRef.current?.focus();
+  }, [editingId]);
+
+  async function handleAdd() {
+    const name = newName.trim();
+    if (name) {
+      const h = await addHome({ name, sort_order: homes.length });
+      setActiveHomeId(h.id);
+    }
+    setAddingNew(false);
+    setNewName('');
+    onClose();
+  }
+
+  function commitEdit() {
+    const name = editName.trim();
+    if (name && editingId) updateHome(editingId, { name });
+    setEditingId(null);
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        ref={overlayRef}
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 490,
+        }}
+      />
+      {/* Sheet / dropdown */}
+      <div style={{
+        position: 'fixed',
+        ...(isMobile
+          ? { bottom: 0, left: 0, right: 0, borderRadius: '18px 18px 0 0', paddingBottom: 'calc(20px + env(safe-area-inset-bottom))' }
+          : { top: 56, left: 0, width: 220, borderRadius: 12 }
+        ),
+        zIndex: 500,
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+        overflow: 'hidden',
+      }}>
+        {/* Handle (mobile only) */}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)' }} />
+          </div>
+        )}
+
+        <div style={{ padding: '12px 0 8px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-tertiary)', padding: '0 16px 8px', textTransform: 'uppercase' }}>
+            Properties
+          </div>
+
+          {homes.map(home => (
+            <div key={home.id} style={{ display: 'flex', alignItems: 'center' }}>
+              {editingId === home.id ? (
+                <input
+                  ref={editInputRef}
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  onBlur={commitEdit}
+                  onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingId(null); }}
+                  style={{
+                    flex: 1, margin: '2px 12px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--accent-gold-dim)',
+                    borderRadius: 8, padding: '6px 10px',
+                    fontSize: 14, color: 'var(--text-primary)', outline: 'none',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                />
+              ) : (
+                <button
+                  onClick={() => { setActiveHomeId(home.id); onClose(); }}
+                  onDoubleClick={() => { setEditingId(home.id); setEditName(home.name); }}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '11px 16px',
+                    background: activeHomeId === home.id ? 'rgba(255,203,116,0.08)' : 'none',
+                    border: 'none', cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <Check
+                    size={14}
+                    color="var(--accent-gold)"
+                    style={{ opacity: activeHomeId === home.id ? 1 : 0, flexShrink: 0 }}
+                  />
+                  <span style={{
+                    fontSize: 14, fontWeight: activeHomeId === home.id ? 600 : 400,
+                    color: activeHomeId === home.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    flex: 1,
+                  }}>
+                    {home.name}
+                  </span>
+                  {homes.length > 1 && (
+                    <button
+                      onClick={e => { e.stopPropagation(); if (window.confirm(`Delete "${home.name}"?`)) { deleteHome(home.id); if (activeHomeId === home.id) setActiveHomeId(null); onClose(); } }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--text-tertiary)', fontSize: 12, opacity: 0.6 }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </button>
+              )}
+            </div>
+          ))}
+
+          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '8px 0' }} />
+
+          {addingNew ? (
+            <div style={{ padding: '4px 12px 8px' }}>
+              <input
+                ref={newInputRef}
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onBlur={handleAdd}
+                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAddingNew(false); setNewName(''); } }}
+                placeholder="Property name…"
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--accent-gold-dim)',
+                  borderRadius: 8, padding: '8px 12px',
+                  fontSize: 14, color: 'var(--text-primary)', outline: 'none',
+                  fontFamily: 'var(--font-body)',
+                }}
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingNew(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '11px 16px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--accent-gold)', fontSize: 14,
+              }}
+            >
+              <Plus size={14} /> Add Property
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function TopBar() {
-  const { currentPage, searchQuery, setSearchQuery, searchFocusTrigger } = useApp();
+  const { currentPage, searchQuery, setSearchQuery, searchFocusTrigger,
+          homes, activeHomeId } = useApp();
   const isMobile = useIsMobile();
   const inputRef = useRef(null);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (searchFocusTrigger > 0) inputRef.current?.focus();
   }, [searchFocusTrigger]);
 
-  const showSearch = currentPage === 'inventory' || currentPage === 'sold';
+  const showSearch    = currentPage === 'inventory' || currentPage === 'sold';
+  const activeHome    = homes.find(h => h.id === activeHomeId);
+  const homeName      = activeHome?.name || 'My Home';
+  const multiHome     = homes.length > 1;
 
   return (
+    <>
     <header style={{
-      height: isMobile ? 56 : 52,
       display: 'flex',
       alignItems: 'center',
       padding: isMobile ? '0 16px' : '0 20px',
@@ -31,26 +204,35 @@ export default function TopBar() {
       borderBottom: '1px solid var(--border-subtle)',
       flexShrink: 0,
       WebkitAppRegion: 'drag',
-      // Push content below status bar on iPhone
       paddingTop: isMobile ? 'env(safe-area-inset-top)' : undefined,
       height: isMobile ? 'calc(56px + env(safe-area-inset-top))' : 52,
     }}>
       {isMobile ? (
-        // Mobile: logo left, search fills middle
         <>
-          <span style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 20,
-            color: 'var(--accent-gold)',
-            letterSpacing: '-0.02em',
-            marginRight: 12,
-            flexShrink: 0,
-            WebkitAppRegion: 'no-drag',
-          }}>
-            Ledgr
-          </span>
+          {/* Home switcher button (always visible on mobile left side) */}
+          <button
+            onClick={() => setShowPicker(v => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              marginRight: 10, flexShrink: 0,
+              WebkitAppRegion: 'no-drag',
+            }}
+          >
+            <span style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 20,
+              color: 'var(--accent-gold)',
+              letterSpacing: '-0.02em',
+            }}>
+              Ledgr
+            </span>
+            {multiHome && (
+              <ChevronDown size={13} color="var(--accent-gold)" style={{ opacity: 0.7 }} />
+            )}
+          </button>
 
-          {showSearch && (
+          {showSearch ? (
             <div style={{
               flex: 1,
               display: 'flex',
@@ -70,11 +252,8 @@ export default function TopBar() {
                 placeholder="Search items…"
                 style={{
                   flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: 14,
-                  color: 'var(--text-primary)',
+                  background: 'none', border: 'none', outline: 'none',
+                  fontSize: 14, color: 'var(--text-primary)',
                   fontFamily: 'var(--font-body)',
                 }}
               />
@@ -84,38 +263,61 @@ export default function TopBar() {
                 </button>
               )}
             </div>
-          )}
-
-          {!showSearch && (
-            <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', WebkitAppRegion: 'no-drag' }}>
-              {PAGE_TITLES[currentPage]}
-            </span>
+          ) : (
+            <div style={{ flex: 1, WebkitAppRegion: 'no-drag' }}>
+              {/* Home name chip — tappable to switch */}
+              <button
+                onClick={() => setShowPicker(v => !v)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: 'rgba(255,203,116,0.08)',
+                  border: '1px solid rgba(255,203,116,0.18)',
+                  borderRadius: 20,
+                  padding: '3px 10px',
+                  cursor: 'pointer',
+                  color: 'var(--accent-gold)',
+                  fontSize: 12, fontWeight: 600,
+                }}
+              >
+                {homeName}
+                <ChevronDown size={11} />
+              </button>
+            </div>
           )}
         </>
       ) : (
-        // Desktop: title left, search center, hints right
+        // Desktop
         <>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
-            minWidth: 100,
-            WebkitAppRegion: 'no-drag',
-          }}>
-            {PAGE_TITLES[currentPage]}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 180, WebkitAppRegion: 'no-drag' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+              {PAGE_TITLES[currentPage]}
+            </span>
+            {/* Home chip */}
+            <button
+              onClick={() => setShowPicker(v => !v)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: 'rgba(255,203,116,0.08)',
+                border: '1px solid rgba(255,203,116,0.18)',
+                borderRadius: 20,
+                padding: '2px 9px',
+                cursor: 'pointer',
+                color: 'rgba(255,203,116,0.7)',
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              {homeName}
+              <ChevronDown size={10} />
+            </button>
+          </div>
 
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', WebkitAppRegion: 'no-drag' }}>
             {showSearch && (
               <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
+                display: 'flex', alignItems: 'center', gap: 8,
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                padding: '5px 12px',
-                width: 320,
+                borderRadius: 8, padding: '5px 12px', width: 320,
               }}>
                 <Search size={13} color="var(--text-tertiary)" />
                 <input
@@ -124,12 +326,8 @@ export default function TopBar() {
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search items… (⌘F)"
                   style={{
-                    flex: 1,
-                    background: 'none',
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 13,
-                    color: 'var(--text-primary)',
+                    flex: 1, background: 'none', border: 'none', outline: 'none',
+                    fontSize: 13, color: 'var(--text-primary)',
                     fontFamily: 'var(--font-body)',
                   }}
                 />
@@ -150,5 +348,8 @@ export default function TopBar() {
         </>
       )}
     </header>
+
+    {showPicker && <HomePicker onClose={() => setShowPicker(false)} />}
+    </>
   );
 }

@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Plus, MoreHorizontal, Check } from 'lucide-react';
+import { X, MapPin } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import { storage } from '../services/storage.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
@@ -650,163 +650,19 @@ function EmptyOverlay({ isMobile }) {
   );
 }
 
-// ── Home tab component ────────────────────────────────────────────────────────
-function HomeTab({ home, isActive, onSelect, onRename, onDelete, canDelete }) {
-  const [showMenu,  setShowMenu]  = useState(false);
-  const [editing,   setEditing]   = useState(false);
-  const [draft,     setDraft]     = useState(home.name);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!showMenu) return;
-    function onOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
-    }
-    document.addEventListener('mousedown', onOutside);
-    document.addEventListener('touchstart', onOutside);
-    return () => {
-      document.removeEventListener('mousedown', onOutside);
-      document.removeEventListener('touchstart', onOutside);
-    };
-  }, [showMenu]);
-
-  function commitRename() {
-    setEditing(false);
-    const trimmed = draft.trim();
-    if (trimmed && trimmed !== home.name) onRename(trimmed);
-  }
-
-  if (editing) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <input
-          autoFocus
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={e => {
-            if (e.key === 'Enter')  commitRename();
-            if (e.key === 'Escape') { setDraft(home.name); setEditing(false); }
-          }}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--accent-gold-dim)',
-            borderRadius: 20,
-            padding: '5px 12px',
-            fontSize: 12,
-            color: 'var(--text-primary)',
-            outline: 'none',
-            width: 110,
-          }}
-        />
-        <button
-          onClick={commitRename}
-          style={{ background: 'var(--accent-gold)', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-        >
-          <Check size={12} color="#0a0a0b" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2 }}>
-      <button
-        onClick={onSelect}
-        style={{
-          padding: '5px 14px',
-          borderRadius: 20,
-          border: isActive ? '1px solid rgba(255,203,116,0.45)' : '1px solid var(--border-subtle)',
-          background: isActive ? 'rgba(255,203,116,0.13)' : 'var(--bg-elevated)',
-          color: isActive ? 'var(--accent-gold)' : 'var(--text-secondary)',
-          fontSize: 12, fontWeight: isActive ? 600 : 400,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          transition: 'background 120ms, color 120ms',
-        }}
-      >
-        {home.name}
-      </button>
-      <button
-        onClick={() => setShowMenu(v => !v)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px',
-          color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center',
-          borderRadius: 6, opacity: showMenu ? 1 : 0.6,
-        }}
-      >
-        <MoreHorizontal size={13} />
-      </button>
-
-      {showMenu && (
-        <div
-          ref={menuRef}
-          style={{
-            position: 'absolute', top: '110%', left: 0, zIndex: 100,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 10,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-            minWidth: 130,
-            overflow: 'hidden',
-          }}
-        >
-          <button
-            onClick={() => { setShowMenu(false); setDraft(home.name); setEditing(true); }}
-            style={{ display: 'block', width: '100%', padding: '9px 14px', background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 13, textAlign: 'left', cursor: 'pointer' }}
-          >
-            Rename
-          </button>
-          {canDelete && (
-            <button
-              onClick={() => { setShowMenu(false); onDelete(); }}
-              style={{ display: 'block', width: '100%', padding: '9px 14px', background: 'none', border: 'none', color: 'var(--accent-red)', fontSize: 13, textAlign: 'left', cursor: 'pointer' }}
-            >
-              Delete
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function House() {
-  const { items, categories, homes, addHome, updateHome, deleteHome, setSelectedItem } = useApp();
+  // items is already scoped to the active home by App.jsx
+  const { items, categories, homes, activeHomeId, setSelectedItem } = useApp();
   const isMobile = useIsMobile();
-  const [activeRoom,   setActiveRoom]   = useState(null);
-  const [activeHomeId, setActiveHomeId] = useState(null); // null = first home
-  const [addingHome,   setAddingHome]   = useState(false);
-  const [newHomeName,  setNewHomeName]  = useState('');
-  const newHomeInputRef = useRef(null);
+  const [activeRoom, setActiveRoom] = useState(null);
 
-  // Derive the active home (default to first)
-  const firstHomeId    = homes[0]?.id ?? 'home_default';
-  const effectiveHomeId = activeHomeId || firstHomeId;
+  const firstHomeId = homes[0]?.id ?? 'home_default';
 
-  useEffect(() => {
-    if (addingHome) newHomeInputRef.current?.focus();
-  }, [addingHome]);
-
-  async function handleAddHome() {
-    const name = newHomeName.trim();
-    if (!name) { setAddingHome(false); return; }
-    const h = await addHome({ name, sort_order: homes.length });
-    setActiveHomeId(h.id);
-    setNewHomeName('');
-    setAddingHome(false);
-  }
-
-  // Filter items to active home (backwards compat: items without home_id belong to first home)
   const roomItems = useMemo(() => {
     const grouped = {};
     items
-      .filter(i => {
-        if (i.status === 'sold' || !i.location) return false;
-        const itemHome = i.home_id || firstHomeId;
-        return itemHome === effectiveHomeId;
-      })
+      .filter(i => i.status !== 'sold' && i.location)
       .forEach(item => {
         const roomId = matchRoom(item.location);
         if (roomId) {
@@ -815,122 +671,56 @@ export default function House() {
         }
       });
     return grouped;
-  }, [items, effectiveHomeId, firstHomeId]);
+  }, [items]);
 
-  const activeRoomDef  = ROOM_DEFS.find(r => r.id === activeRoom);
-  const activeItems    = activeRoom ? (roomItems[activeRoom] || []) : [];
-  const totalRooms     = Object.keys(roomItems).length;
-  const totalMapped    = Object.values(roomItems).reduce((s, v) => s + v.length, 0);
-  const hasAnyItems    = totalMapped > 0;
-  const activeHomeName = homes.find(h => h.id === effectiveHomeId)?.name || 'My Home';
+  const activeRoomDef = ROOM_DEFS.find(r => r.id === activeRoom);
+  const activeItems   = activeRoom ? (roomItems[activeRoom] || []) : [];
+  const totalRooms    = Object.keys(roomItems).length;
+  const totalMapped   = Object.values(roomItems).reduce((s, v) => s + v.length, 0);
+  const hasAnyItems   = totalMapped > 0;
+  const homeName      = homes.find(h => h.id === activeHomeId)?.name || 'My Home';
 
   return (
     <div style={{
-      height:          '100%',
-      display:         'flex',
-      flexDirection:   'column',
-      overflow:        'hidden',
-      background:      'var(--bg-void)',
+      height: '100%', display: 'flex', flexDirection: 'column',
+      overflow: 'hidden', background: 'var(--bg-void)',
     }}>
 
       {/* Header */}
       <div style={{
-        padding:       isMobile ? '14px 16px' : '16px 24px',
-        borderBottom:  '1px solid var(--border-subtle)',
-        flexShrink:    0,
+        padding: isMobile ? '14px 16px' : '16px 24px',
+        borderBottom: '1px solid var(--border-subtle)',
+        flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: homes.length > 1 || addingHome ? 10 : 0 }}>
-          <div>
-            <h2 style={{
-              fontSize:      isMobile ? 18 : 20,
-              fontFamily:    'var(--font-display)',
-              fontWeight:    400,
-              color:         'var(--text-primary)',
-              margin:        0,
-              letterSpacing: '-0.01em',
-            }}>
-              {activeHomeName}
-            </h2>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '3px 0 0' }}>
-              {hasAnyItems
-                ? `${totalMapped} item${totalMapped !== 1 ? 's' : ''} across ${totalRooms} room${totalRooms !== 1 ? 's' : ''} — tap a glow to explore`
-                : 'Assign locations to items to light up your home'}
-            </p>
+        <div>
+          <h2 style={{
+            fontSize: isMobile ? 18 : 20,
+            fontFamily: 'var(--font-display)',
+            fontWeight: 400,
+            color: 'var(--text-primary)',
+            margin: 0,
+            letterSpacing: '-0.01em',
+          }}>
+            {homeName}
+          </h2>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '3px 0 0' }}>
+            {hasAnyItems
+              ? `${totalMapped} item${totalMapped !== 1 ? 's' : ''} across ${totalRooms} room${totalRooms !== 1 ? 's' : ''} — tap a glow to explore`
+              : 'Assign locations to items to light up your home'}
+          </p>
+        </div>
+        {hasAnyItems && (
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700,
+            color: 'rgba(255,203,116,0.55)',
+            background: 'rgba(255,203,116,0.07)',
+            border: '1px solid rgba(255,203,116,0.14)',
+            borderRadius: 20, padding: '4px 12px',
+          }}>
+            {totalRooms} active
           </div>
-          {hasAnyItems && (
-            <div style={{
-              fontFamily:    'var(--font-mono)',
-              fontSize:      12,
-              fontWeight:    700,
-              color:         'rgba(255,203,116,0.55)',
-              background:    'rgba(255,203,116,0.07)',
-              border:        '1px solid rgba(255,203,116,0.14)',
-              borderRadius:  20,
-              padding:       '4px 12px',
-            }}>
-              {totalRooms} active
-            </div>
-          )}
-        </div>
-
-        {/* Home tabs row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-          {homes.map(home => (
-            <HomeTab
-              key={home.id}
-              home={home}
-              isActive={home.id === effectiveHomeId}
-              onSelect={() => { setActiveHomeId(home.id); setActiveRoom(null); }}
-              onRename={name => updateHome(home.id, { name })}
-              onDelete={() => {
-                deleteHome(home.id);
-                if (effectiveHomeId === home.id) setActiveHomeId(null);
-              }}
-              canDelete={homes.length > 1}
-            />
-          ))}
-
-          {addingHome ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                ref={newHomeInputRef}
-                value={newHomeName}
-                onChange={e => setNewHomeName(e.target.value)}
-                onBlur={handleAddHome}
-                onKeyDown={e => {
-                  if (e.key === 'Enter')  handleAddHome();
-                  if (e.key === 'Escape') { setAddingHome(false); setNewHomeName(''); }
-                }}
-                placeholder="Home name…"
-                style={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--accent-gold-dim)',
-                  borderRadius: 20,
-                  padding: '5px 12px',
-                  fontSize: 12,
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                  width: 110,
-                }}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingHome(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                padding: '5px 10px', borderRadius: 20,
-                border: '1px dashed var(--border-subtle)',
-                background: 'transparent',
-                color: 'var(--text-tertiary)',
-                fontSize: 11, cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <Plus size={11} /> Add Home
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Map area */}

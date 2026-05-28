@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useCallback, useEffect, useRef } from 'react';
+import { useState, createContext, useContext, useCallback, useEffect, useRef, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Layout from './components/layout/Layout.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -14,7 +14,7 @@ import AuthScreen from './components/auth/AuthScreen.jsx';
 import { useItems } from './hooks/useItems.js';
 import { useCategories } from './hooks/useCategories.js';
 import { useHomes } from './hooks/useHomes.js';
-import { useStats } from './hooks/useStats.js';
+import { computeStats } from './utils/computeStats.js';
 import { isFirebaseConfigured, auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ACHIEVEMENTS, getUnlocked, getSeenIds, markSeen } from './utils/achievements.js';
@@ -60,10 +60,34 @@ function AppInner() {
   const [addModalQuick,      setAddModalQuick]      = useState(false);
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0);
 
-  const { items, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
+  const { items: allItems, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
   const { homes, addHome, updateHome, deleteHome } = useHomes();
-  const { stats, refetch: refetchStats } = useStats();
+
+  // ── Active home ────────────────────────────────────────────────────────────
+  const [activeHomeId, setActiveHomeIdRaw] = useState(() => {
+    try { return localStorage.getItem('ledgr_active_home') || null; } catch { return null; }
+  });
+
+  const firstHomeId     = homes[0]?.id ?? 'home_default';
+  const effectiveHomeId = homes.some(h => h.id === activeHomeId) ? activeHomeId : firstHomeId;
+
+  function setActiveHomeId(id) {
+    setActiveHomeIdRaw(id);
+    try { localStorage.setItem('ledgr_active_home', id); } catch {}
+  }
+
+  // Items scoped to the active home (backwards-compat: no home_id → first home)
+  const items = useMemo(() =>
+    allItems.filter(i => (i.home_id || firstHomeId) === effectiveHomeId),
+    [allItems, effectiveHomeId, firstHomeId]
+  );
+
+  // Stats derived from the home-scoped items — always in sync, no extra fetch
+  const stats = useMemo(() => computeStats(items), [items]);
+
+  // refetchStats is now a no-op alias — stats auto-recompute from items
+  const refetchStats = refetchItems;
 
   // ── Achievement notifications ──────────────────────────────────────────────
   const achievementInitRef = useRef(false);
@@ -129,12 +153,12 @@ function AppInner() {
   }, [markSold, selectedItem, refetchStats, toast]);
 
   const handleAddItem = useCallback(async (itemData) => {
-    const newItem = await addItem(itemData);
+    // Ensure every new item is stamped with the active home
+    const newItem = await addItem({ ...itemData, home_id: itemData.home_id || effectiveHomeId });
     setShowAddModal(false);
-    refetchStats();
     toast('Item added to Ledgr', 'success');
     return newItem;
-  }, [addItem, refetchStats, toast]);
+  }, [addItem, effectiveHomeId, toast]);
 
   const handleDeleteItem = useCallback(async (id) => {
     await deleteItem(id);
@@ -202,7 +226,7 @@ function AppInner() {
     searchFocusTrigger,
     items, filteredItems, itemsLoading,
     categories,
-    homes,
+    homes, activeHomeId: effectiveHomeId, setActiveHomeId,
     stats,
     addItem: handleAddItem,
     updateItem: handleUpdateItem,
