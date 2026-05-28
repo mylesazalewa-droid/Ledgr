@@ -55,6 +55,7 @@ function AppInner() {
   const [sortBy,             setSortBy]             = useState('newest');
   const [selectedItem,       setSelectedItem]       = useState(null);
   const [showAddModal,       setShowAddModal]       = useState(false);
+  const [addModalQuick,      setAddModalQuick]      = useState(false);
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0);
 
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
@@ -139,6 +140,27 @@ function AppInner() {
     toast('Item deleted', 'info');
   }, [deleteItem, refetchStats, toast]);
 
+  // ── iOS keyboard zoom-reset ────────────────────────────────────────────────
+  // When the on-screen keyboard dismisses on iOS, Safari sometimes leaves the
+  // layout viewport scrolled — the fixed BottomNav stays mis-positioned until
+  // the user manually scrolls. Listening to visualViewport resize lets us snap
+  // back to origin the instant the viewport height grows (keyboard closed).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let prevH = vv.height;
+    function onVvResize() {
+      if (vv.height > prevH) {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
+      prevH = vv.height;
+    }
+    vv.addEventListener('resize', onVvResize);
+    return () => vv.removeEventListener('resize', onVvResize);
+  }, []);
+
   // ---- Keyboard shortcuts ----
   useEffect(() => {
     function onKey(e) {
@@ -161,6 +183,11 @@ function AppInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedItem, showAddModal]);
 
+  function openQuickAdd() {
+    setAddModalQuick(true);
+    setShowAddModal(true);
+  }
+
   const ctx = {
     currentPage, setCurrentPage,
     selectedCategory, setSelectedCategory,
@@ -168,6 +195,7 @@ function AppInner() {
     sortBy, setSortBy,
     selectedItem, setSelectedItem,
     showAddModal, setShowAddModal,
+    openQuickAdd,
     searchFocusTrigger,
     items, filteredItems, itemsLoading,
     categories,
@@ -203,7 +231,11 @@ function AppInner() {
 
       <AnimatePresence>
         {showAddModal && (
-          <AddItemModal key="add-modal" onClose={() => setShowAddModal(false)} />
+          <AddItemModal
+            key="add-modal"
+            initialQuickMode={addModalQuick}
+            onClose={() => { setShowAddModal(false); setAddModalQuick(false); }}
+          />
         )}
       </AnimatePresence>
     </AppContext.Provider>

@@ -11,6 +11,17 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 
+const LISTING_PLATFORMS = [
+  { id: 'eBay',       color: '#E53238' },
+  { id: 'Facebook',   color: '#1877F2' },
+  { id: 'Depop',      color: '#FF2D55' },
+  { id: 'Poshmark',   color: '#C13584' },
+  { id: 'OfferUp',    color: '#0BC47B' },
+  { id: 'Mercari',    color: '#FF6600' },
+  { id: 'Craigslist', color: '#9c27b0' },
+  { id: 'Vinted',     color: '#09B1BA' },
+];
+
 function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
 }
@@ -165,6 +176,9 @@ export default function ItemDrawer({ item, onClose }) {
   const [aiDescription,  setAiDescription]  = useState(null);
   const [tags,           setTags]           = useState(() => Array.isArray(item.tags) ? item.tags : []);
   const [tagInput,       setTagInput]       = useState('');
+  const [platforms,      setPlatforms]      = useState(() => Array.isArray(item.listing_platforms) ? item.listing_platforms : []);
+  const [suggestingPrice, setSuggestingPrice] = useState(false);
+  const [priceSuggestion, setPriceSuggestion] = useState(null);
   const fileInputRef  = useRef(null);
   const tagInputRef   = useRef(null);
 
@@ -181,6 +195,43 @@ export default function ItemDrawer({ item, onClose }) {
     const next = tags.filter(t => t !== tag);
     setTags(next);
     updateItem(item.id, { tags: next });
+  }
+
+  function togglePlatform(platformId) {
+    const next = platforms.includes(platformId)
+      ? platforms.filter(p => p !== platformId)
+      : [...platforms, platformId];
+    setPlatforms(next);
+    updateItem(item.id, { listing_platforms: next });
+  }
+
+  async function suggestPrice() {
+    setSuggestingPrice(true);
+    setPriceSuggestion(null);
+    try {
+      const categoryName = categories.find(c => c.id === item.category_id)?.name;
+      const res = await fetch('/api/suggest-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:      item.name,
+          make:      item.make,
+          model:     item.model,
+          condition: item.condition,
+          category:  categoryName,
+        }),
+      });
+      const data = await res.json();
+      if (data.suggested != null) {
+        setPriceSuggestion(data);
+      } else {
+        toast?.(`Could not suggest price — ${data.error || 'unknown error'}`, 'error');
+      }
+    } catch {
+      toast?.('Price suggestion failed — are you online?', 'error');
+    } finally {
+      setSuggestingPrice(false);
+    }
   }
 
   const category = categories.find(c => c.id === item.category_id);
@@ -493,6 +544,116 @@ export default function ItemDrawer({ item, onClose }) {
                 color="var(--accent-gold)"
               />
             </div>
+
+            {/* AI Price Suggest + Platform Tracker — available items only */}
+            {item.status !== 'sold' && (
+              <>
+                {/* Suggest price pill */}
+                <div style={{ marginTop: -4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={suggestPrice}
+                    disabled={suggestingPrice}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 11px', borderRadius: 20,
+                      border: '1px solid rgba(212,168,83,0.28)',
+                      background: 'transparent',
+                      color: suggestingPrice ? 'var(--text-tertiary)' : 'var(--accent-gold)',
+                      fontSize: 11, cursor: 'pointer',
+                      opacity: suggestingPrice ? 0.6 : 1,
+                      transition: 'opacity 100ms',
+                    }}
+                  >
+                    {suggestingPrice
+                      ? <><Loader size={10} style={{ animation: 'spin 1s linear infinite' }} /> Thinking…</>
+                      : <><Sparkles size={10} /> AI Suggest Price</>
+                    }
+                  </button>
+                </div>
+
+                {/* Price suggestion result */}
+                <AnimatePresence>
+                  {priceSuggestion && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      style={{
+                        background: 'rgba(212,168,83,0.05)',
+                        border: '1px solid rgba(212,168,83,0.2)',
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Sparkles size={11} color="var(--accent-gold)" />
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent-gold)' }}>
+                            Price Suggestion
+                          </span>
+                        </div>
+                        <button onClick={() => setPriceSuggestion(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, display: 'flex' }}>
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 6 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--accent-gold)' }}>
+                          {fmt(priceSuggestion.suggested)}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                          range {fmt(priceSuggestion.low)} – {fmt(priceSuggestion.high)}
+                        </span>
+                      </div>
+                      {priceSuggestion.reasoning && (
+                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 10px', lineHeight: 1.55 }}>
+                          {priceSuggestion.reasoning}
+                        </p>
+                      )}
+                      <button
+                        onClick={() => {
+                          update('asking_price', priceSuggestion.suggested);
+                          setPriceSuggestion(null);
+                          toast?.(`Asking price set to ${fmt(priceSuggestion.suggested)}`, 'success');
+                        }}
+                        style={{
+                          padding: '6px 16px', borderRadius: 8, border: 'none',
+                          background: 'var(--accent-gold)', color: '#000',
+                          fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        Apply {fmt(priceSuggestion.suggested)}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Listed On platforms */}
+                <Field label="Listed On">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 2 }}>
+                    {LISTING_PLATFORMS.map(p => {
+                      const active = platforms.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => togglePlatform(p.id)}
+                          style={{
+                            padding: '4px 11px', borderRadius: 20,
+                            fontSize: 11, fontWeight: active ? 600 : 400,
+                            border: `1px solid ${active ? p.color + '88' : 'var(--border-subtle)'}`,
+                            background: active ? `${p.color}22` : 'transparent',
+                            color: active ? p.color : 'var(--text-tertiary)',
+                            cursor: 'pointer',
+                            transition: 'all 100ms',
+                          }}
+                        >
+                          {p.id}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              </>
+            )}
 
             {/* Price history */}
             {Array.isArray(item.price_history) && item.price_history.length > 0 && (

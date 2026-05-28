@@ -14,7 +14,7 @@ const ICON_MAP   = { Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box };
 const STEPS      = ['Photo', 'Category', 'Details', 'Extras'];
 const LOCATIONS  = ['Living Room', 'Bedroom', 'Master Closet', 'Kitchen', 'Garage', 'Basement', 'Attic', 'Office', 'Storage'];
 
-export default function AddItemModal({ onClose }) {
+export default function AddItemModal({ onClose, initialQuickMode = false }) {
   const { addItem, categories } = useApp();
   const isMobile = useIsMobile();
   const [step,   setStep]   = useState(0);
@@ -23,7 +23,7 @@ export default function AddItemModal({ onClose }) {
 
   const [showScanner,  setShowScanner]  = useState(false);
   const [scanLookup,   setScanLookup]   = useState(false);
-  const [quickMode,    setQuickMode]    = useState(false);
+  const [quickMode,    setQuickMode]    = useState(initialQuickMode);
   const [photoPath,    setPhotoPath]    = useState(null);
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const [categoryId,   setCategoryId]  = useState(null);

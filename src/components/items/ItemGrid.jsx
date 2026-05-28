@@ -66,15 +66,18 @@ function SkeletonCard() {
       border: '1px solid var(--border-subtle)',
       overflow: 'hidden',
     }}>
-      <div style={{
-        width: '100%',
-        aspectRatio: '16/10',
-        background: 'var(--bg-elevated)',
-        animation: 'pulse 1.5s ease infinite',
-      }} />
-      <div style={{ padding: '12px 14px 14px 16px' }}>
-        <div style={{ height: 13, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 6, width: '70%' }} />
-        <div style={{ height: 11, background: 'var(--bg-elevated)', borderRadius: 6, width: '50%' }} />
+      {/* Photo placeholder */}
+      <div className="skeleton-shimmer" style={{ width: '100%', aspectRatio: '16/10' }} />
+      <div style={{ padding: '10px 14px 13px 16px' }}>
+        {/* Title */}
+        <div className="skeleton-shimmer" style={{ height: 13, borderRadius: 6, marginBottom: 7, width: '68%' }} />
+        {/* Subtitle */}
+        <div className="skeleton-shimmer" style={{ height: 10, borderRadius: 6, marginBottom: 10, width: '45%' }} />
+        {/* Price + badge row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="skeleton-shimmer" style={{ height: 14, borderRadius: 6, width: '38%' }} />
+          <div className="skeleton-shimmer" style={{ height: 18, borderRadius: 20, width: '24%' }} />
+        </div>
       </div>
     </div>
   );

@@ -286,6 +286,28 @@ button {
   will-change: transform;
 }
 
+/* ─── Pulse (used by legacy skeleton) ───────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.4; }
+}
+
+/* ─── Shimmer skeleton ───────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    rgba(255, 255, 255, 0.055) 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 400% auto;
+  animation: shimmer 2s linear infinite;
+}
+
 /* ─── Page enter transition ──────────────────────────────────────────────── */
 @keyframes pageEnter {
   from { opacity: 0; transform: translateY(12px); }

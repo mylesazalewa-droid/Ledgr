@@ -1,5 +1,6 @@
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Package, DollarSign, Settings, Plus } from 'lucide-react';
+import { LayoutDashboard, Package, DollarSign, Settings, Plus, Zap } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 
 const NAV_ITEMS = [
@@ -10,12 +11,29 @@ const NAV_ITEMS = [
 ];
 
 export default function BottomNav() {
-  const { currentPage, setCurrentPage, setShowAddModal, setSelectedCategory, setSearchQuery } = useApp();
+  const { currentPage, setCurrentPage, setShowAddModal, setSelectedCategory, setSearchQuery, openQuickAdd } = useApp();
+  const fabLongTimer = useRef(null);
+  const fabLongFired = useRef(false);
 
   function navigate(id) {
     setCurrentPage(id);
     setSelectedCategory(null);
     setSearchQuery('');
+  }
+
+  function onFabTouchStart() {
+    fabLongFired.current = false;
+    fabLongTimer.current = setTimeout(() => {
+      fabLongFired.current = true;
+      navigator.vibrate?.(18);
+      openQuickAdd();
+    }, 480);
+  }
+  function onFabTouchEnd()  { clearTimeout(fabLongTimer.current); }
+  function onFabTouchMove() { clearTimeout(fabLongTimer.current); }
+  function onFabClick() {
+    if (fabLongFired.current) { fabLongFired.current = false; return; }
+    setShowAddModal(true);
   }
 
   return (
@@ -59,7 +77,10 @@ export default function BottomNav() {
 
             <motion.button
               whileTap={{ scale: 0.86 }}
-              onClick={() => setShowAddModal(true)}
+              onClick={onFabClick}
+              onTouchStart={onFabTouchStart}
+              onTouchEnd={onFabTouchEnd}
+              onTouchMove={onFabTouchMove}
               style={{
                 position: 'relative',
                 width: 52,

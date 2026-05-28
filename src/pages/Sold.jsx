@@ -15,6 +15,34 @@ function timeAgo(dateStr) {
   catch { return ''; }
 }
 
+const PLATFORM_COLORS = {
+  'eBay':       '#E53238',
+  'Facebook':   '#1877F2',
+  'Depop':      '#FF2D55',
+  'Poshmark':   '#C13584',
+  'OfferUp':    '#0BC47B',
+  'Mercari':    '#FF6600',
+  'Craigslist': '#9c27b0',
+  'Vinted':     '#09B1BA',
+};
+
+function PlatformBadge({ platform }) {
+  if (!platform) return <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>;
+  const color = PLATFORM_COLORS[platform] || '#9a9a9a';
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '2px 8px', borderRadius: 20,
+      fontSize: 10, fontWeight: 600,
+      background: `${color}22`,
+      border: `1px solid ${color}44`,
+      color,
+    }}>
+      {platform}
+    </span>
+  );
+}
+
 export default function Sold() {
   const { items, stats, setSelectedItem, searchQuery } = useApp();
   const isMobile = useIsMobile();
@@ -124,10 +152,12 @@ export default function Sold() {
                     <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.name}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={10} />
-                      {timeAgo(item.sold_at || item.updated_at)}
-                      {item.sold_platform && <> · {item.sold_platform}</>}
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Calendar size={10} />
+                        {timeAgo(item.sold_at || item.updated_at)}
+                      </span>
+                      {item.sold_platform && <PlatformBadge platform={item.sold_platform} />}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -197,7 +227,7 @@ export default function Sold() {
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.condition || '—'}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{fmt(item.asking_price)}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent-green)', fontWeight: 600 }}>{fmt(item.sold_price)}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.sold_platform || '—'}</span>
+              <PlatformBadge platform={item.sold_platform} />
             </div>
           ))}
         </div>
