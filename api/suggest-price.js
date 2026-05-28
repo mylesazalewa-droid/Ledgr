@@ -36,9 +36,17 @@ Respond ONLY with a JSON object (no markdown, no extra text):
       return res.status(502).json({ error: 'Gemini API error', detail: data });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    // Strip markdown code fences Gemini sometimes wraps around JSON
+    text = text.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+
+    // Extract the first JSON object in the response
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return res.status(500).json({ error: 'Could not parse price suggestion' });
+    if (!match) {
+      console.error('suggest-price: could not find JSON in response:', text);
+      return res.status(500).json({ error: 'Could not parse price suggestion', raw: text });
+    }
 
     const suggestion = JSON.parse(match[0]);
     return res.status(200).json(suggestion);
