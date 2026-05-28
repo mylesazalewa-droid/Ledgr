@@ -14,7 +14,7 @@
  * Returns: { description: string }
  */
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -63,8 +63,8 @@ export default async function handler(req, res) {
 
     if (!apiRes.ok) {
       const detail = await apiRes.json().catch(() => ({}));
-      console.error('Gemini error:', apiRes.status, detail);
-      return res.status(502).json({ error: 'Gemini API error', status: apiRes.status });
+      console.error('Gemini error:', apiRes.status, JSON.stringify(detail));
+      return res.status(502).json({ error: 'Gemini API error', status: apiRes.status, detail });
     }
 
     const data        = await apiRes.json();
