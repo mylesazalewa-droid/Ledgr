@@ -12,14 +12,14 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 
 const LISTING_PLATFORMS = [
-  { id: 'eBay',       color: '#E53238' },
-  { id: 'Facebook',   color: '#1877F2' },
-  { id: 'Depop',      color: '#FF2D55' },
-  { id: 'Poshmark',   color: '#C13584' },
-  { id: 'OfferUp',    color: '#0BC47B' },
-  { id: 'Mercari',    color: '#FF6600' },
-  { id: 'Craigslist', color: '#9c27b0' },
-  { id: 'Vinted',     color: '#09B1BA' },
+  { id: 'eBay',                 color: '#E53238' },
+  { id: 'Facebook Marketplace', color: '#1877F2' },
+  { id: 'Depop',                color: '#FF2D55' },
+  { id: 'Poshmark',             color: '#C13584' },
+  { id: 'OfferUp',              color: '#0BC47B' },
+  { id: 'Mercari',              color: '#FF6600' },
+  { id: 'Craigslist',           color: '#9c27b0' },
+  { id: 'Vinted',               color: '#09B1BA' },
 ];
 
 function fmt(n) {
@@ -176,11 +176,18 @@ export default function ItemDrawer({ item, onClose }) {
   const [aiDescription,  setAiDescription]  = useState(null);
   const [tags,           setTags]           = useState(() => Array.isArray(item.tags) ? item.tags : []);
   const [tagInput,       setTagInput]       = useState('');
-  const [platforms,      setPlatforms]      = useState(() => Array.isArray(item.listing_platforms) ? item.listing_platforms : []);
+  const [platforms,       setPlatforms]       = useState(() => Array.isArray(item.listing_platforms) ? item.listing_platforms : []);
+  const [quickSellPlatform, setQuickSellPlatform] = useState(null);
   const [suggestingPrice, setSuggestingPrice] = useState(false);
   const [priceSuggestion, setPriceSuggestion] = useState(null);
-  const fileInputRef  = useRef(null);
-  const tagInputRef   = useRef(null);
+  const [showPhotoMenu,   setShowPhotoMenu]   = useState(false);
+  const fileInputRef     = useRef(null);
+  const tagInputRef      = useRef(null);
+  const photoLongTimer   = useRef(null);
+  const photoLongFired   = useRef(false);
+  // Per-platform chip long-press refs (keyed by platform id)
+  const chipTimers       = useRef({});
+  const chipLongFired    = useRef({});
 
   function commitTag(raw) {
     const tag = raw.trim().replace(/,/g, '').slice(0, 28);
@@ -203,6 +210,39 @@ export default function ItemDrawer({ item, onClose }) {
       : [...platforms, platformId];
     setPlatforms(next);
     updateItem(item.id, { listing_platforms: next });
+  }
+
+  // Long-press on an active platform chip → open SoldModal pre-filled
+  function onChipTouchStart(platformId) {
+    chipLongFired.current[platformId] = false;
+    chipTimers.current[platformId] = setTimeout(() => {
+      chipLongFired.current[platformId] = true;
+      navigator.vibrate?.(18);
+      setQuickSellPlatform(platformId);
+      setShowSoldModal(true);
+    }, 480);
+  }
+  function onChipTouchEnd(platformId)  { clearTimeout(chipTimers.current[platformId]); }
+  function onChipTouchMove(platformId) { clearTimeout(chipTimers.current[platformId]); }
+  function onChipClick(platformId) {
+    if (chipLongFired.current[platformId]) { chipLongFired.current[platformId] = false; return; }
+    togglePlatform(platformId);
+  }
+
+  // Photo long-press → show action menu
+  function onPhotoTouchStart() {
+    photoLongFired.current = false;
+    photoLongTimer.current = setTimeout(() => {
+      photoLongFired.current = true;
+      navigator.vibrate?.(15);
+      setShowPhotoMenu(true);
+    }, 480);
+  }
+  function onPhotoTouchEnd()  { clearTimeout(photoLongTimer.current); }
+  function onPhotoTouchMove() { clearTimeout(photoLongTimer.current); }
+  function onPhotoClick() {
+    if (photoLongFired.current) { photoLongFired.current = false; return; }
+    if (!uploadingPhoto) fileInputRef.current?.click();
   }
 
   async function suggestPrice() {
@@ -417,9 +457,12 @@ export default function ItemDrawer({ item, onClose }) {
           {/* Hidden file input */}
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
 
-          {/* Photo — tap to add/change */}
+          {/* Photo — tap to add/change, long-press for options */}
           <div
-            onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
+            onClick={onPhotoClick}
+            onTouchStart={onPhotoTouchStart}
+            onTouchEnd={onPhotoTouchEnd}
+            onTouchMove={onPhotoTouchMove}
             onMouseEnter={() => setPhotoHovered(true)}
             onMouseLeave={() => setPhotoHovered(false)}
             style={{
@@ -466,6 +509,53 @@ export default function ItemDrawer({ item, onClose }) {
                 }
               </div>
             )}
+
+            {/* Photo long-press menu */}
+            <AnimatePresence>
+              {showPhotoMenu && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={e => { e.stopPropagation(); setShowPhotoMenu(false); }}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    background: 'rgba(0,0,0,0.72)',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 10,
+                    zIndex: 10,
+                  }}
+                >
+                  <button
+                    onClick={e => { e.stopPropagation(); setShowPhotoMenu(false); fileInputRef.current?.click(); }}
+                    style={photoMenuBtnStyle}
+                  >
+                    <ImagePlus size={15} /> Change Photo
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setShowPhotoMenu(false); shareItem(); }}
+                    style={photoMenuBtnStyle}
+                  >
+                    <Share2 size={15} /> Share Item
+                  </button>
+                  {photoDataUrl && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        const a = document.createElement('a');
+                        a.href = photoDataUrl;
+                        a.download = `${item.name.replace(/[^a-z0-9]/gi, '_')}.jpg`;
+                        a.click();
+                        setShowPhotoMenu(false);
+                      }}
+                      style={photoMenuBtnStyle}
+                    >
+                      <Copy size={15} /> Save Photo
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -635,7 +725,11 @@ export default function ItemDrawer({ item, onClose }) {
                       return (
                         <button
                           key={p.id}
-                          onClick={() => togglePlatform(p.id)}
+                          onClick={() => onChipClick(p.id)}
+                          onTouchStart={() => onChipTouchStart(p.id)}
+                          onTouchEnd={() => onChipTouchEnd(p.id)}
+                          onTouchMove={() => onChipTouchMove(p.id)}
+                          title={active && item.status !== 'sold' ? `Long-press to sell on ${p.id}` : p.id}
                           style={{
                             padding: '4px 11px', borderRadius: 20,
                             fontSize: 11, fontWeight: active ? 600 : 400,
@@ -651,6 +745,11 @@ export default function ItemDrawer({ item, onClose }) {
                       );
                     })}
                   </div>
+                  {platforms.length > 0 && item.status !== 'sold' && (
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      Long-press an active platform to mark sold there
+                    </div>
+                  )}
                 </Field>
               </>
             )}
@@ -955,10 +1054,12 @@ export default function ItemDrawer({ item, onClose }) {
       {showSoldModal && (
         <SoldModal
           item={item}
-          onClose={() => setShowSoldModal(false)}
+          defaultPlatform={quickSellPlatform || ''}
+          onClose={() => { setShowSoldModal(false); setQuickSellPlatform(null); }}
           onConfirm={async (saleData) => {
             await markSold(item.id, saleData);
             setShowSoldModal(false);
+            setQuickSellPlatform(null);
           }}
         />
       )}
@@ -1115,6 +1216,7 @@ function PrintLabelModal({ item, onClose }) {
   );
 }
 
-const selectStyle  = { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', width: '100%' };
-const primaryBtn   = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-green)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-const secondaryBtn = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' };
+const selectStyle      = { background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '5px 8px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', width: '100%' };
+const primaryBtn       = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-green)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+const secondaryBtn     = { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' };
+const photoMenuBtnStyle = { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', backdropFilter: 'blur(8px)', width: 180, justifyContent: 'center' };

@@ -3,16 +3,18 @@ import { motion } from 'framer-motion';
 import { X, CheckCircle } from 'lucide-react';
 import PriceInput from '../shared/PriceInput.jsx';
 
-const PLATFORMS = ['eBay', 'Facebook Marketplace', 'Craigslist', 'OfferUp', 'Poshmark', 'Mercari', 'Other'];
+const PLATFORMS = ['eBay', 'Facebook Marketplace', 'Depop', 'Poshmark', 'OfferUp', 'Mercari', 'Craigslist', 'Vinted', 'Other'];
 
 // Default fee % per platform
 const PLATFORM_FEES = {
   'eBay':                 13.25,
   'Facebook Marketplace': 0,
-  'Craigslist':           0,
-  'OfferUp':              12.9,
+  'Depop':                10,
   'Poshmark':             20,
+  'OfferUp':              12.9,
   'Mercari':              10,
+  'Craigslist':           0,
+  'Vinted':               5,
   'Other':                0,
 };
 
@@ -20,10 +22,16 @@ function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
 }
 
-export default function SoldModal({ item, onClose, onConfirm }) {
+export default function SoldModal({ item, onClose, onConfirm, defaultPlatform = '' }) {
   const [soldPrice,    setSoldPrice]    = useState(item.asking_price || 0);
-  const [platform,     setPlatform]     = useState('');
-  const [feePct,       setFeePct]       = useState(0);
+  const [platform,     setPlatform]     = useState(() => {
+    if (defaultPlatform && PLATFORMS.includes(defaultPlatform)) return defaultPlatform;
+    return '';
+  });
+  const [feePct,       setFeePct]       = useState(() => {
+    if (defaultPlatform && PLATFORM_FEES[defaultPlatform] != null) return PLATFORM_FEES[defaultPlatform];
+    return 0;
+  });
   const [shippingCost, setShippingCost] = useState(0);
   const [notes,        setNotes]        = useState('');
   const [confirming,   setConfirming]   = useState(false);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { TrendingDown, Zap, Trophy } from 'lucide-react';
 import { useApp } from '../App.jsx';
+import { createPortal } from 'react-dom';
 import StatsBar from '../components/dashboard/StatsBar.jsx';
 import EarningsChart from '../components/dashboard/EarningsChart.jsx';
 import RecentActivity from '../components/dashboard/RecentActivity.jsx';
@@ -41,9 +42,41 @@ function useCountUp(target, duration = 1400) {
 }
 
 export default function Dashboard() {
-  const { stats, setCurrentPage, setShowAddModal } = useApp();
+  const { stats, setCurrentPage, setShowAddModal, toast } = useApp();
   const isMobile    = useIsMobile();
-  const [hoveredAch, setHoveredAch] = useState(null);
+  const [hoveredAch,  setHoveredAch]  = useState(null);
+  const [shownDescAch, setShownDescAch] = useState(null); // long-press on mobile
+
+  // Achievement long-press
+  const achTimers = useRef({});
+  function onAchTouchStart(id) {
+    achTimers.current[id] = setTimeout(() => {
+      navigator.vibrate?.(12);
+      setShownDescAch(id);
+      setTimeout(() => setShownDescAch(v => v === id ? null : v), 2600);
+    }, 480);
+  }
+  function onAchTouchEnd(id)  { clearTimeout(achTimers.current[id]); }
+
+  // Hero card long-press → share/copy
+  const heroLongTimer = useRef(null);
+  const heroLongFired = useRef(false);
+  function onHeroTouchStart() {
+    heroLongFired.current = false;
+    heroLongTimer.current = setTimeout(() => {
+      heroLongFired.current = true;
+      navigator.vibrate?.(20);
+      const text = `My Ledgr: ${fmt(stats.totalValue)} locked up · ${stats.totalItems ?? 0} items · ${fmt(stats.totalEarned)} earned`;
+      if (navigator.share) {
+        navigator.share({ title: 'Ledgr Portfolio', text }).catch(() => {});
+      } else {
+        navigator.clipboard?.writeText(text);
+        toast?.('Portfolio summary copied', 'success');
+      }
+    }, 500);
+  }
+  function onHeroTouchEnd()  { clearTimeout(heroLongTimer.current); }
+  function onHeroTouchMove() { clearTimeout(heroLongTimer.current); }
 
   const stallingItems = stats.longestSitting?.filter(i => i.days_listed <  60) ?? [];
   const agingItems    = stats.longestSitting?.filter(i => i.days_listed >= 60 && i.days_listed < 90) ?? [];
@@ -79,6 +112,9 @@ export default function Dashboard() {
       {/* ── Trapped Value Hero — animated bezel ── */}
       <div
         className="hero-bezel"
+        onTouchStart={onHeroTouchStart}
+        onTouchEnd={onHeroTouchEnd}
+        onTouchMove={onHeroTouchMove}
         style={{
           borderRadius:  isMobile ? 22 : 20,
           marginBottom:  isMobile ? 14 : 18,
@@ -269,12 +305,16 @@ export default function Dashboard() {
           {ACHIEVEMENTS.map(a => {
             const earned  = unlockedIds.has(a.id);
             const hovered = hoveredAch === a.id;
+            const showDesc = hovered || shownDescAch === a.id;
             return (
               <div
                 key={a.id}
                 className={`achieve-card${earned ? ' earn' : ''}`}
                 onMouseEnter={() => setHoveredAch(a.id)}
                 onMouseLeave={() => setHoveredAch(null)}
+                onTouchStart={() => onAchTouchStart(a.id)}
+                onTouchEnd={() => onAchTouchEnd(a.id)}
+                onTouchMove={() => onAchTouchEnd(a.id)}
                 style={{
                   background: earned
                     ? 'linear-gradient(135deg, rgba(255,203,116,0.12), rgba(255,203,116,0.04))'
@@ -308,15 +348,15 @@ export default function Dashboard() {
                 }}>
                   {a.label}
                 </span>
-                {hovered && earned && (
+                {showDesc && (
                   <span style={{
                     fontSize:   9,
-                    color:      'rgba(255,203,116,0.55)',
+                    color:      earned ? 'rgba(255,203,116,0.55)' : 'rgba(255,255,255,0.35)',
                     textAlign:  'center',
                     lineHeight: 1.4,
                     animation:  'fadeSlideUp 0.15s ease both',
                   }}>
-                    {a.desc}
+                    {earned ? a.desc : a.desc}
                   </span>
                 )}
               </div>
@@ -425,9 +465,28 @@ function Chip({ label, accent }) {
 }
 
 function MiniStatCard({ label, value, color }) {
+  const { toast } = useApp();
+  const longTimer = useRef(null);
+  const longFired = useRef(false);
+
+  function onTouchStart() {
+    longFired.current = false;
+    longTimer.current = setTimeout(() => {
+      longFired.current = true;
+      navigator.vibrate?.(14);
+      navigator.clipboard?.writeText(String(value));
+      toast?.(`${label} copied`, 'success');
+    }, 480);
+  }
+  function onTouchEnd()  { clearTimeout(longTimer.current); }
+  function onTouchMove() { clearTimeout(longTimer.current); }
+
   return (
     <div
       className="mini-stat-card"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchMove={onTouchMove}
       style={{
         flexShrink:   0,
         background:   'var(--bg-surface)',

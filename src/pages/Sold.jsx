@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../App.jsx';
-import { DollarSign, Calendar, Download } from 'lucide-react';
+import { DollarSign, Calendar, Download, Eye, Copy } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import EmptyState from '../components/shared/EmptyState.jsx';
 import { storage } from '../services/storage.js';
@@ -16,15 +18,72 @@ function timeAgo(dateStr) {
 }
 
 const PLATFORM_COLORS = {
-  'eBay':       '#E53238',
-  'Facebook':   '#1877F2',
-  'Depop':      '#FF2D55',
-  'Poshmark':   '#C13584',
-  'OfferUp':    '#0BC47B',
-  'Mercari':    '#FF6600',
-  'Craigslist': '#9c27b0',
-  'Vinted':     '#09B1BA',
+  'eBay':                 '#E53238',
+  'Facebook':             '#1877F2',
+  'Facebook Marketplace': '#1877F2',
+  'Depop':                '#FF2D55',
+  'Poshmark':             '#C13584',
+  'OfferUp':              '#0BC47B',
+  'Mercari':              '#FF6600',
+  'Craigslist':           '#9c27b0',
+  'Vinted':               '#09B1BA',
 };
+
+function SoldRowMenu({ x, y, onClose, onView, onCopy }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    }
+    const t = setTimeout(() => document.addEventListener('mousedown', handler), 50);
+    return () => { clearTimeout(t); document.removeEventListener('mousedown', handler); };
+  }, [onClose]);
+
+  const menuW = 160, menuH = 88;
+  const cx = Math.min(x, window.innerWidth  - menuW - 8);
+  const cy = Math.min(y, window.innerHeight - menuH - 8);
+
+  return createPortal(
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.92 }}
+      transition={{ duration: 0.1 }}
+      style={{
+        position: 'fixed', top: cy, left: cx, zIndex: 9999,
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 10, padding: 4, minWidth: menuW,
+        boxShadow: 'var(--shadow-float)',
+      }}
+    >
+      <RowMenuItem icon={Eye}  label="View Details" onClick={onView} />
+      <RowMenuItem icon={Copy} label="Copy Info"    onClick={onCopy} />
+    </motion.div>,
+    document.body
+  );
+}
+
+function RowMenuItem({ icon: Icon, label, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 9,
+        width: '100%', padding: '8px 10px', borderRadius: 7,
+        border: 'none', background: hovered ? 'var(--bg-surface)' : 'transparent',
+        color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', textAlign: 'left',
+      }}
+    >
+      <Icon size={13} /> {label}
+    </button>
+  );
+}
 
 function PlatformBadge({ platform }) {
   if (!platform) return <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>;
@@ -44,9 +103,41 @@ function PlatformBadge({ platform }) {
 }
 
 export default function Sold() {
-  const { items, stats, setSelectedItem, searchQuery } = useApp();
+  const { items, stats, setSelectedItem, searchQuery, toast } = useApp();
   const isMobile = useIsMobile();
   const [activePlatform, setActivePlatform] = useState(null);
+  const [rowMenu, setRowMenu] = useState(null); // { item, x, y }
+  const rowLongTimer = useRef(null);
+  const rowLongFired = useRef(false);
+
+  function onRowTouchStart(item, e) {
+    rowLongFired.current = false;
+    const touch = e.touches[0];
+    rowLongTimer.current = setTimeout(() => {
+      rowLongFired.current = true;
+      navigator.vibrate?.(14);
+      setRowMenu({ item, x: touch.clientX, y: touch.clientY });
+    }, 480);
+  }
+  function onRowTouchEnd()  { clearTimeout(rowLongTimer.current); }
+  function onRowTouchMove() { clearTimeout(rowLongTimer.current); }
+  function onRowClick(item) {
+    if (rowLongFired.current) { rowLongFired.current = false; return; }
+    setSelectedItem(item);
+  }
+
+  function copyItemInfo(item) {
+    const lines = [
+      item.name,
+      [item.make, item.model].filter(Boolean).join(' '),
+      item.sold_platform ? `Platform: ${item.sold_platform}` : '',
+      `Sold: ${fmt(item.sold_price)}`,
+      item.sold_at ? `Date: ${new Date(item.sold_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : '',
+    ].filter(Boolean).join('\n');
+    navigator.clipboard.writeText(lines);
+    toast?.('Sale info copied', 'success');
+    setRowMenu(null);
+  }
 
   const soldItems = items.filter(i => i.status === 'sold')
     .filter(i => {
@@ -138,7 +229,10 @@ export default function Sold() {
             return (
               <div
                 key={item.id}
-                onClick={() => setSelectedItem(item)}
+                onClick={() => onRowClick(item)}
+                onTouchStart={e => onRowTouchStart(item, e)}
+                onTouchEnd={onRowTouchEnd}
+                onTouchMove={onRowTouchMove}
                 style={{
                   background: 'var(--bg-surface)',
                   borderRadius: 12,
@@ -232,6 +326,20 @@ export default function Sold() {
           ))}
         </div>
       )}
+
+      {/* Row long-press context menu */}
+      <AnimatePresence>
+        {rowMenu && (
+          <SoldRowMenu
+            key="row-menu"
+            x={rowMenu.x}
+            y={rowMenu.y}
+            onClose={() => setRowMenu(null)}
+            onView={() => { setSelectedItem(rowMenu.item); setRowMenu(null); }}
+            onCopy={() => copyItemInfo(rowMenu.item)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
