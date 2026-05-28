@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Check, Scan, Loader, Zap,
          Cpu, Home, Shirt, Wrench, Star, Bike, Box } from 'lucide-react';
@@ -20,6 +20,7 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
   const [step,   setStep]   = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const savingRef = useRef(false); // synchronous guard — useState is async and won't block double-taps
 
   const [showScanner,  setShowScanner]  = useState(false);
   const [scanLookup,   setScanLookup]   = useState(false);
@@ -66,7 +67,8 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
   }
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim() || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveError(null);
     try {
@@ -90,6 +92,7 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
       console.error('AddItemModal save failed:', err);
       setSaveError('Save failed — check your connection and try again.');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
