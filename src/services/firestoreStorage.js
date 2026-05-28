@@ -12,7 +12,7 @@
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc,
   deleteDoc, query, where, orderBy, serverTimestamp,
-  addDoc, writeBatch,
+  addDoc, writeBatch, onSnapshot,
 } from 'firebase/firestore';
 import {
   ref as storageRef,
@@ -124,6 +124,7 @@ async function syncStorefrontItemsInternal(u) {
       quantity:     item.quantity     || 1,
       location:     item.location     || null,
       added_at:     item.added_at     || null,
+      category_id:  item.category_id  || null,
     });
   });
   await batch.commit();
@@ -132,6 +133,15 @@ async function syncStorefrontItemsInternal(u) {
 export function createFirestoreAdapter() {
   // Cache items in memory to power getStats without extra round trips
   let _cachedItems = null;
+
+  // Listeners that want live stat updates whenever items snapshot fires
+  const _statsListeners = new Set();
+  function _notifyStats() {
+    if (_cachedItems && _statsListeners.size > 0) {
+      const s = computeStats(_cachedItems);
+      _statsListeners.forEach(fn => fn(s));
+    }
+  }
 
   return {
     // ---- Items ----
@@ -288,6 +298,38 @@ export function createFirestoreAdapter() {
     async getSoldLog() {
       const snap = await getDocs(query(col('sold_log'), orderBy('sold_at', 'desc')));
       return snap.docs.map(toItem);
+    },
+
+    // ---- Real-time subscriptions ----
+
+    /**
+     * Subscribe to live item updates via Firestore onSnapshot.
+     * Returns an unsubscribe function — call it in useEffect cleanup.
+     * Also notifies any subscribeToStats listeners on every change.
+     */
+    subscribeToItems(callback) {
+      const q = query(col('items'), orderBy('added_at', 'desc'));
+      return onSnapshot(q, (snap) => {
+        const items = snap.docs.map(toItem);
+        _cachedItems = items;
+        callback(items);
+        _notifyStats();
+      }, (err) => {
+        console.error('subscribeToItems error:', err);
+      });
+    },
+
+    /**
+     * Subscribe to live stat updates derived from the items snapshot.
+     * The callback fires immediately if items are already cached,
+     * then again whenever subscribeToItems delivers a new snapshot.
+     * Returns an unsubscribe function.
+     */
+    subscribeToStats(callback) {
+      _statsListeners.add(callback);
+      // Deliver current stats right away if we already have items
+      if (_cachedItems) callback(computeStats(_cachedItems));
+      return () => _statsListeners.delete(callback);
     },
 
     // ---- Settings ----

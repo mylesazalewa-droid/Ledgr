@@ -210,6 +210,16 @@ export function createLocalStorageAdapter() {
       return { success: true };
     },
 
+    // ---- Real-time subscriptions (one-shot for localStorage — no live updates) ----
+    subscribeToItems(callback) {
+      this.getItems().then(callback).catch(console.error);
+      return () => {}; // no-op unsubscribe
+    },
+    subscribeToStats(callback) {
+      this.getStats().then(callback).catch(console.error);
+      return () => {};
+    },
+
     // ---- Stats ----
     async getStats() {
       return computeStats(load(KEY_ITEMS, []));

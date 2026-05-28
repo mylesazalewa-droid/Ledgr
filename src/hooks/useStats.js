@@ -11,16 +11,28 @@ const DEFAULT = {
 export function useStats() {
   const [stats, setStats] = useState(DEFAULT);
 
-  const fetch = useCallback(async () => {
+  useEffect(() => {
+    // subscribeToStats fires whenever the items snapshot updates (Firestore)
+    // or once on mount (localStorage). Returns undefined for Electron.
+    const unsubscribe = storage.subscribeToStats((data) => {
+      setStats(data);
+    });
+
+    if (!unsubscribe) {
+      storage.getStats().then(setStats).catch(console.error);
+    }
+
+    return () => unsubscribe?.();
+  }, []);
+
+  const refetch = useCallback(async () => {
     try {
       const data = await storage.getStats();
       setStats(data);
     } catch (err) {
-      console.error('useStats:', err);
+      console.error('useStats refetch:', err);
     }
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { stats, refetch: fetch };
+  return { stats, refetch };
 }

@@ -1,92 +1,85 @@
 /**
  * Vercel serverless function — POST /api/generate-listing
- * Generates a polished listing description using Claude.
+ * Generates a listing description using Google Gemini (free tier).
  *
- * Body: { name, make, model, condition, notes, askingPrice, costPrice, category }
+ * FREE: 1,500 requests/day — no credit card required.
+ *
+ * Setup (one time):
+ *   1. https://aistudio.google.com/ → "Get API key" → Create API key
+ *   2. Vercel → Project → Settings → Environment Variables
+ *      Name: GEMINI_API_KEY   Value: <your key>   Environments: All
+ *   3. Redeploy (or push any commit)
+ *
+ * Body:    { name, make, model, condition, notes, askingPrice }
  * Returns: { description: string }
- *
- * Requires ANTHROPIC_API_KEY in Vercel environment variables.
  */
 
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent';
+
 export default async function handler(req, res) {
-  // CORS — allow same-origin only
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    return res.status(500).json({
+      error: 'GEMINI_API_KEY is not configured',
+      setup: 'Add GEMINI_API_KEY to Vercel → Project → Settings → Environment Variables, then redeploy.',
+    });
   }
 
-  const { name, make, model, condition, notes, askingPrice, costPrice, category } = req.body || {};
+  const { name, make, model, condition, notes, askingPrice } = req.body ?? {};
+  if (!name) return res.status(400).json({ error: 'name is required' });
 
-  if (!name) {
-    return res.status(400).json({ error: 'Item name is required' });
-  }
+  const title = [name, make, model].filter(Boolean).join(' ');
 
-  // Build a compact item summary for the prompt
-  const parts = [
-    `Item: ${name}`,
-    make  ? `Brand: ${make}`  : null,
-    model ? `Model: ${model}` : null,
-    condition ? `Condition: ${condition}` : null,
-    category  ? `Category: ${category}`  : null,
-    askingPrice ? `Asking price: $${askingPrice}` : null,
-    costPrice   ? `Cost paid: $${costPrice}`       : null,
-    notes ? `Seller notes: ${notes}` : null,
-  ].filter(Boolean).join('\n');
-
-  const prompt = `You are helping someone sell an item online. Write a compelling, honest listing description for the following item.
-
-${parts}
-
-Guidelines:
-- 2–4 short paragraphs, plain text (no markdown, no bullet points, no headers)
-- Lead with the most sellable feature or best quality
-- Mention condition honestly — buyers appreciate transparency
-- Include practical details (what's included, any flaws worth noting, pick-up or shipping)
-- Keep a friendly, human tone — not salesy
-- End with a light call to action ("Feel free to message with any questions!")
-- Maximum 120 words total
-
-Return ONLY the listing text — no preamble, no labels.`;
+  const prompt = [
+    `Write a short, honest marketplace listing description (2–3 sentences) for this resale item:`,
+    ``,
+    `Item: ${title}`,
+    condition   ? `Condition: ${condition}`  : null,
+    askingPrice ? `Price: $${askingPrice}`   : null,
+    notes       ? `Seller notes: ${notes}`   : null,
+    ``,
+    `Rules: factual and friendly, do NOT invent specs not mentioned, no emojis,`,
+    `no first-person, end with a brief call to action. Plain text only.`,
+  ].filter(v => v !== null).join('\n');
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
+    const apiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }],
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 200, temperature: 0.65 },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
       }),
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Anthropic API error:', err);
-      return res.status(502).json({ error: 'AI service error — try again' });
+    if (!apiRes.ok) {
+      const detail = await apiRes.json().catch(() => ({}));
+      console.error('Gemini error:', apiRes.status, detail);
+      return res.status(502).json({ error: 'Gemini API error', status: apiRes.status });
     }
 
-    const data = await response.json();
-    const description = data.content?.[0]?.text?.trim() || '';
+    const data        = await apiRes.json();
+    const description = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
 
+    if (!description) {
+      console.error('Empty Gemini response:', JSON.stringify(data));
+      return res.status(500).json({ error: 'No description returned — try again' });
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ description });
+
   } catch (err) {
     console.error('generate-listing error:', err);
-    return res.status(500).json({ error: 'Internal error — try again' });
+    return res.status(500).json({ error: 'Internal error — try again', message: err.message });
   }
 }

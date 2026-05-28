@@ -163,6 +163,45 @@ const GLOBAL_STYLES = `
     transition: border-color 150ms, opacity 150ms;
   }
   .sf-btn-secondary:active { opacity: 0.7; }
+
+  /* ── Filter bar ──────────────────────────────────────────────── */
+  .sf-search-wrap { position: relative; }
+  .sf-search-icon {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    pointer-events: none; opacity: 0.4;
+  }
+  .sf-search {
+    width: 100%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 9px 14px 9px 36px;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    -webkit-appearance: none;
+    transition: border-color 150ms;
+  }
+  .sf-search:focus { border-color: rgba(212,168,83,0.35); }
+  .sf-search::placeholder { color: var(--text-tertiary); }
+
+  .sf-pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 120ms, border-color 120ms, color 120ms;
+  }
+  .sf-pill:active { opacity: 0.7; }
+  .sf-pill-on {
+    background: rgba(212,168,83,0.12);
+    border-color: rgba(212,168,83,0.4);
+    color: var(--accent-gold);
+  }
 `;
 
 export default function Storefront({ userId }) {
@@ -170,8 +209,11 @@ export default function Storefront({ userId }) {
   const [items,      setItems]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
-  const [selected,   setSelected]   = useState(null);
-  const [copied,     setCopied]     = useState(false);
+  const [selected,        setSelected]        = useState(null);
+  const [copied,          setCopied]          = useState(false);
+  const [searchQuery,     setSearchQuery]     = useState('');
+  const [filterCondition, setFilterCondition] = useState('');
+  const [sortBy,          setSortBy]          = useState('');
 
   useEffect(() => {
     if (!userId) { setError('Storefront not found.'); setLoading(false); return; }
@@ -240,6 +282,30 @@ export default function Storefront({ userId }) {
 
   const availableItems = items.filter(i => i.status === 'available' || !i.status);
 
+  // Unique conditions present in this shop's inventory
+  const conditions = [...new Set(availableItems.map(i => i.condition).filter(Boolean))];
+
+  // Apply search + condition filter + sort
+  const filteredItems = availableItems
+    .filter(item => {
+      if (filterCondition && item.condition !== filterCondition) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          item.name?.toLowerCase().includes(q)  ||
+          item.make?.toLowerCase().includes(q)  ||
+          item.model?.toLowerCase().includes(q) ||
+          item.notes?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'price_asc')  return (a.asking_price || 0) - (b.asking_price || 0);
+      if (sortBy === 'price_desc') return (b.asking_price || 0) - (a.asking_price || 0);
+      return 0; // default: newest-first (preserved from Firestore orderBy)
+    });
+
   return (
     <div style={pageStyle}>
       {styleTag}
@@ -299,6 +365,68 @@ export default function Storefront({ userId }) {
         </div>
       </div>
 
+      {/* Filter bar — only shown when there are items */}
+      {availableItems.length > 0 && (
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 16px' }}>
+          {/* Search input */}
+          <div className="sf-search-wrap" style={{ marginBottom: 10 }}>
+            <svg className="sf-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              className="sf-search"
+              type="search"
+              placeholder="Search items…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Condition pills + sort */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              className={`sf-pill${!filterCondition ? ' sf-pill-on' : ''}`}
+              onClick={() => setFilterCondition('')}
+            >
+              All
+            </button>
+            {conditions.map(c => (
+              <button
+                key={c}
+                className={`sf-pill${filterCondition === c ? ' sf-pill-on' : ''}`}
+                onClick={() => setFilterCondition(filterCondition === c ? '' : c)}
+              >
+                {c}
+              </button>
+            ))}
+
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+              <button
+                className={`sf-pill${sortBy === 'price_asc' ? ' sf-pill-on' : ''}`}
+                onClick={() => setSortBy(sortBy === 'price_asc' ? '' : 'price_asc')}
+                title="Price: low to high"
+              >
+                $ ↑
+              </button>
+              <button
+                className={`sf-pill${sortBy === 'price_desc' ? ' sf-pill-on' : ''}`}
+                onClick={() => setSortBy(sortBy === 'price_desc' ? '' : 'price_desc')}
+                title="Price: high to low"
+              >
+                $ ↓
+              </button>
+            </div>
+          </div>
+
+          {/* Results count when filtering */}
+          {(searchQuery || filterCondition) && (
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+              {filteredItems.length} of {availableItems.length} item{availableItems.length !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Item grid */}
       <div style={{ maxWidth: 960, margin: '0 auto', padding: `0 16px calc(60px + env(safe-area-inset-bottom, 0px))` }}>
         {availableItems.length === 0 ? (
@@ -306,9 +434,13 @@ export default function Storefront({ userId }) {
             <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.4 }}>📦</div>
             No items listed yet — check back soon.
           </div>
+        ) : filteredItems.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '40px 0 20px', fontSize: 14 }}>
+            No items match your search.
+          </div>
         ) : (
           <div className="sf-grid">
-            {availableItems.map(item => (
+            {filteredItems.map(item => (
               <StorefrontCard key={item.id} item={item} onSelect={setSelected} />
             ))}
           </div>

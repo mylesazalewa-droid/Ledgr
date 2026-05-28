@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader, Sparkles } from 'lucide-react';
+import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader, Sparkles, Tag } from 'lucide-react';
+import { auth } from '../../firebase.js';
 import { useApp } from '../../App.jsx';
 import StatusBadge from '../shared/StatusBadge.jsx';
 import CategoryBadge from '../categories/CategoryBadge.jsx';
@@ -158,6 +159,7 @@ export default function ItemDrawer({ item, onClose }) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showSoldModal,  setShowSoldModal]  = useState(false);
   const [showDelete,     setShowDelete]     = useState(false);
+  const [showLabel,      setShowLabel]      = useState(false);
   const [copied,         setCopied]         = useState(false);
   const [generating,     setGenerating]     = useState(false);
   const [aiDescription,  setAiDescription]  = useState(null);
@@ -682,6 +684,9 @@ export default function ItemDrawer({ item, onClose }) {
           <button onClick={copyListingText} style={secondaryBtn}>
             {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy</>}
           </button>
+          <button onClick={() => setShowLabel(true)} style={secondaryBtn}>
+            <Tag size={14} /> Label
+          </button>
           {item.listing_url && (
             <button onClick={() => storage.openExternal(item.listing_url)} style={secondaryBtn}>
               <ExternalLink size={14} /> Open
@@ -700,6 +705,155 @@ export default function ItemDrawer({ item, onClose }) {
           }}
         />
       )}
+
+      {showLabel && (
+        <PrintLabelModal item={item} onClose={() => setShowLabel(false)} />
+      )}
+    </>
+  );
+}
+
+// ── Print Label Modal ──────────────────────────────────────────────────────────
+function PrintLabelModal({ item, onClose }) {
+  const uid      = auth?.currentUser?.uid;
+  const shopUrl  = uid ? `${window.location.origin}/shop/${uid}` : window.location.origin;
+  const qrSrc    = `https://api.qrserver.com/v1/create-qr-code/?size=130x130&format=png&data=${encodeURIComponent(shopUrl)}`;
+
+  function printLabel() {
+    // Inject print-only CSS that hides everything except the label
+    const style = document.createElement('style');
+    style.id    = '__stash_print_style';
+    style.textContent = `
+      @media print {
+        body > * { visibility: hidden !important; }
+        #stash-print-label,
+        #stash-print-label * { visibility: visible !important; }
+        #stash-print-label {
+          position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    window.print();
+    // Clean up after print dialog closes
+    setTimeout(() => document.getElementById('__stash_print_style')?.remove(), 1000);
+  }
+
+  const priceText = item.asking_price > 0
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(item.asking_price)
+    : 'Make offer';
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }}
+      />
+
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 12 }}
+        animate={{ opacity: 1, scale: 1,    y: 0 }}
+        exit={{   opacity: 0, scale: 0.94,  y: 12 }}
+        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 201,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20, pointerEvents: 'none',
+        }}
+      >
+        <div style={{
+          pointerEvents: 'auto',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 16,
+          width: '100%', maxWidth: 360,
+          padding: 24,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Print Label</span>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <X size={16} color="var(--text-secondary)" />
+            </button>
+          </div>
+
+          {/* Label preview */}
+          <div
+            id="stash-print-label"
+            style={{
+              background: '#fff',
+              borderRadius: 10,
+              padding: '16px 18px',
+              display: 'flex',
+              gap: 14,
+              alignItems: 'center',
+              marginBottom: 16,
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            {/* QR code */}
+            <img
+              src={qrSrc}
+              alt="QR code"
+              width={80}
+              height={80}
+              style={{ flexShrink: 0, borderRadius: 4 }}
+            />
+
+            {/* Item info */}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                fontWeight: 700, fontSize: 14,
+                color: '#111', lineHeight: 1.3,
+                marginBottom: 4,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {item.name}
+              </div>
+              {(item.make || item.model) && (
+                <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+                  {[item.make, item.model].filter(Boolean).join(' ')}
+                </div>
+              )}
+              <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 20, color: '#111' }}>
+                {priceText}
+              </div>
+              {item.condition && (
+                <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                  {item.condition}
+                </div>
+              )}
+              <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#9ca3af', marginTop: 6 }}>
+                Stash
+              </div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>
+            QR code links to your public shop. Scan to browse all available items.
+          </div>
+
+          <button
+            onClick={printLabel}
+            style={{
+              width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+              background: 'var(--accent-gold)', color: '#000',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Tag size={14} /> Print Label
+          </button>
+        </div>
+      </motion.div>
     </>
   );
 }
