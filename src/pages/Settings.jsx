@@ -1,70 +1,280 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Download, Cloud, LogOut, Globe, Copy, Check, RefreshCw } from 'lucide-react';
+import {
+  Download, Cloud, LogOut, Globe, Copy, Check, RefreshCw,
+  Package, TrendingUp, Info, DollarSign,
+  Image as ImageIcon, Link, Tag,
+} from 'lucide-react';
 import { useApp } from '../App.jsx';
 import CategoryManager from '../components/categories/CategoryManager.jsx';
 import { storage, isElectron } from '../services/storage.js';
 import { auth, isFirebaseConfigured } from '../firebase.js';
 import { signOut } from 'firebase/auth';
 
-function Section({ title, description, children }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-card)',
-        overflow: 'hidden',
-        marginBottom: 16,
-      }}
-    >
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</div>
-        {description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>{description}</div>}
-      </div>
-      <div style={{ padding: 20 }}>
-        {children}
-      </div>
-    </motion.div>
-  );
-}
+// ── Primitives ────────────────────────────────────────────────────────────────
 
-function Toggle({ value, onChange, label, description }) {
+function SectionLabel({ label }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <div>
-        <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{label}</div>
-        {description && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{description}</div>}
-      </div>
-      <button
-        onClick={() => onChange(!value)}
-        style={{
-          width: 40, height: 22,
-          borderRadius: 11,
-          background: value ? 'var(--accent-gold)' : 'var(--bg-elevated)',
-          border: '1px solid var(--border-subtle)',
-          cursor: 'pointer',
-          position: 'relative',
-          flexShrink: 0,
-          transition: 'background 150ms',
-        }}
-      >
-        <div style={{
-          width: 16, height: 16,
-          borderRadius: '50%',
-          background: '#fff',
-          position: 'absolute',
-          top: 2,
-          left: value ? 20 : 2,
-          transition: 'left 150ms',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-        }} />
-      </button>
+    <div style={{
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: '0.1em',
+      textTransform: 'uppercase',
+      color: 'var(--text-tertiary)',
+      padding: '20px 4px 8px',
+    }}>
+      {label}
     </div>
   );
 }
+
+function SettingsCard({ children, overflow = 'hidden' }) {
+  return (
+    <div style={{
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border-subtle)',
+      borderRadius: 14,
+      overflow,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function RowDivider() {
+  return (
+    <div style={{
+      height: 1,
+      background: 'var(--border-subtle)',
+      marginLeft: 60,
+    }} />
+  );
+}
+
+function Toggle({ value, onChange }) {
+  return (
+    <button
+      onClick={() => onChange(!value)}
+      style={{
+        width: 44,
+        height: 24,
+        borderRadius: 12,
+        background: value ? 'var(--accent-gold)' : 'rgba(255,255,255,0.1)',
+        border: 'none',
+        cursor: 'pointer',
+        position: 'relative',
+        flexShrink: 0,
+        transition: 'background 200ms ease, box-shadow 200ms ease',
+        boxShadow: value ? '0 0 12px rgba(255,203,116,0.38)' : 'none',
+      }}
+    >
+      <div style={{
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        background: '#fff',
+        position: 'absolute',
+        top: 3,
+        left: value ? 23 : 3,
+        transition: 'left 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+      }} />
+    </button>
+  );
+}
+
+function SettingsRow({ icon: Icon, iconBg, iconColor = 'var(--text-secondary)', label, description, right, onClick, danger }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => onClick && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 16px',
+        cursor: onClick ? 'pointer' : 'default',
+        background: hovered ? 'rgba(255,255,255,0.025)' : 'transparent',
+        transition: 'background 80ms',
+        minHeight: 52,
+      }}
+    >
+      <div style={{
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        background: iconBg || (danger ? 'rgba(224,92,92,0.1)' : 'rgba(255,255,255,0.05)'),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {Icon && (
+          <Icon size={15} color={danger ? 'var(--accent-red)' : iconColor} />
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: danger ? 'var(--accent-red)' : 'var(--text-primary)',
+          lineHeight: 1.2,
+        }}>
+          {label}
+        </div>
+        {description && (
+          <div style={{
+            fontSize: 11,
+            color: 'var(--text-tertiary)',
+            marginTop: 2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {description}
+          </div>
+        )}
+      </div>
+
+      {right && (
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+          {right}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Account header card ───────────────────────────────────────────────────────
+
+function AccountHeader({ user, items, stats }) {
+  const listed  = (items || []).filter(i => i.status !== 'sold').length;
+  const sold    = (items || []).filter(i => i.status === 'sold').length;
+  const earned  = stats?.totalEarned ?? 0;
+  const fmtCur  = v => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+
+  const STATS = [
+    { label: 'Listed', value: listed,       mono: true,  color: 'var(--text-primary)' },
+    { label: 'Sold',   value: sold,         mono: true,  color: 'var(--text-primary)' },
+    { label: 'Earned', value: fmtCur(earned), mono: true, color: 'var(--accent-green)' },
+  ];
+
+  return (
+    <div style={{
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border-subtle)',
+      borderRadius: 14,
+      padding: '16px 18px 14px',
+      marginBottom: 4,
+    }}>
+      {/* Top row — icon, name, sync badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <div style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: 'linear-gradient(145deg, rgba(255,203,116,0.18) 0%, rgba(255,203,116,0.06) 100%)',
+          border: '1px solid rgba(255,203,116,0.22)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <DollarSign size={18} color="var(--accent-gold)" strokeWidth={2} />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 20,
+            letterSpacing: '-0.025em',
+            color: 'var(--text-primary)',
+            lineHeight: 1.1,
+          }}>
+            Ledgr
+          </div>
+          {user?.email && (
+            <div style={{
+              fontSize: 11,
+              color: 'var(--text-tertiary)',
+              marginTop: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {user.email}
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '4px 10px',
+          borderRadius: 20,
+          background: 'rgba(76,175,125,0.1)',
+          border: '1px solid rgba(76,175,125,0.18)',
+          flexShrink: 0,
+        }}>
+          <div style={{
+            width: 5,
+            height: 5,
+            borderRadius: '50%',
+            background: 'var(--accent-green)',
+            boxShadow: '0 0 6px rgba(76,175,125,0.7)',
+          }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-green)', letterSpacing: '0.03em' }}>
+            {isElectron ? 'Local' : 'Synced'}
+          </span>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div style={{
+        display: 'flex',
+        gap: 1,
+        paddingTop: 13,
+        borderTop: '1px solid var(--border-subtle)',
+      }}>
+        {STATS.map((s, i) => (
+          <div key={s.label} style={{
+            flex: 1,
+            textAlign: 'center',
+            padding: '2px 0',
+            borderRight: i < STATS.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+          }}>
+            <div style={{
+              fontSize: 16,
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono)',
+              color: s.color,
+              lineHeight: 1,
+              letterSpacing: '-0.02em',
+            }}>
+              {s.value}
+            </div>
+            <div style={{
+              fontSize: 9,
+              color: 'var(--text-tertiary)',
+              marginTop: 4,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: 600,
+            }}>
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Settings() {
   const { items, stats, toast } = useApp();
@@ -72,19 +282,20 @@ export default function Settings() {
   const [cloudPhotos, setCloudPhotos] = useState(false);
 
   // Storefront state (web only)
-  const [storefrontEnabled,  setStorefrontEnabled]  = useState(false);
-  const [storefrontLoading,  setStorefrontLoading]  = useState(false);
-  const [storefrontSyncing,  setStorefrontSyncing]  = useState(false);
-  const [sfDisplayName,      setSfDisplayName]      = useState('');
-  const [sfBio,              setSfBio]              = useState('');
-  const [sfContact,          setSfContact]          = useState('');
-  const [urlCopied,          setUrlCopied]          = useState(false);
+  const [storefrontEnabled, setStorefrontEnabled] = useState(false);
+  const [storefrontSyncing, setStorefrontSyncing] = useState(false);
+  const [sfDisplayName,     setSfDisplayName]     = useState('');
+  const [sfBio,             setSfBio]             = useState('');
+  const [sfContact,         setSfContact]         = useState('');
+  const [urlCopied,         setUrlCopied]         = useState(false);
+
+  const user = auth?.currentUser ?? null;
   const storefrontUrl = isFirebaseConfigured && auth?.currentUser
     ? `${window.location.origin}/shop/${auth.currentUser.uid}`
     : null;
 
   useEffect(() => {
-    if (!isElectron) return; // These settings are Electron-only feature flags
+    if (!isElectron) return;
     storage.getSetting('FEATURE_FIREBASE_SYNC').then(v => setSyncEnabled(v === 'true'));
     storage.getSetting('FEATURE_CLOUD_PHOTOS').then(v => setCloudPhotos(v === 'true'));
   }, []);
@@ -102,7 +313,6 @@ export default function Settings() {
   }, []);
 
   async function handleStorefrontToggle(enabled) {
-    setStorefrontLoading(true);
     try {
       if (enabled) {
         await storage.enableStorefront?.({ displayName: sfDisplayName, bio: sfBio, contactInfo: sfContact });
@@ -115,8 +325,6 @@ export default function Settings() {
       }
     } catch (err) {
       toast?.('Failed to update storefront: ' + err.message, 'error');
-    } finally {
-      setStorefrontLoading(false);
     }
   }
 
@@ -161,115 +369,209 @@ export default function Settings() {
     storage.exportCsv(header + rows);
   }
 
+  const fmtCur = v => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+
   return (
-    <div style={{ padding: 24, maxWidth: 680 }}>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, color: 'var(--text-primary)', marginBottom: 24 }}>
+    <div style={{ padding: '24px 24px 64px', maxWidth: 680 }}>
+
+      {/* Page heading */}
+      <h1 style={{
+        fontFamily:    'var(--font-display)',
+        fontSize:      28,
+        fontWeight:    400,
+        letterSpacing: '-0.03em',
+        color:         'var(--text-primary)',
+        margin:        '0 0 18px',
+        lineHeight:    1,
+      }}>
         Settings
-      </h2>
+      </h1>
 
-      <Section title="Categories" description="Manage your inventory categories.">
+      {/* Account card */}
+      <AccountHeader user={user} items={items} stats={stats} />
+
+      {/* ── Categories ── */}
+      <SectionLabel label="Categories" />
+      <div style={{
+        background:   'var(--bg-surface)',
+        border:       '1px solid var(--border-subtle)',
+        borderRadius: 14,
+        padding:      '8px 0',
+      }}>
         <CategoryManager />
-      </Section>
+      </div>
 
-      {/* Cloud sync section — only relevant in Electron (desktop) */}
+      {/* ── Sync ── */}
       {isElectron ? (
-        <Section title="Cloud Sync" description="Sync your inventory across devices via Firebase.">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Toggle
+        <>
+          <SectionLabel label="Cloud Sync" />
+          <SettingsCard>
+            <SettingsRow
+              icon={Cloud}
+              iconBg="rgba(91,142,240,0.1)"
+              iconColor="var(--accent-blue)"
               label="Firebase Sync"
-              description="Requires Firebase project setup."
-              value={syncEnabled}
-              onChange={v => {
-                setSyncEnabled(v);
-                storage.setSetting('FEATURE_FIREBASE_SYNC', String(v));
-              }}
+              description="Sync inventory across all your devices"
+              right={
+                <Toggle
+                  value={syncEnabled}
+                  onChange={v => {
+                    setSyncEnabled(v);
+                    storage.setSetting('FEATURE_FIREBASE_SYNC', String(v));
+                  }}
+                />
+              }
             />
-            <Toggle
+            <RowDivider />
+            <SettingsRow
+              icon={ImageIcon}
+              iconBg="rgba(91,142,240,0.1)"
+              iconColor="var(--accent-blue)"
               label="Cloud Photo Backup"
-              description="Upload item photos to Firebase Storage."
-              value={cloudPhotos}
-              onChange={v => {
-                setCloudPhotos(v);
-                storage.setSetting('FEATURE_CLOUD_PHOTOS', String(v));
-              }}
+              description="Upload item photos to Firebase Storage"
+              right={
+                <Toggle
+                  value={cloudPhotos}
+                  onChange={v => {
+                    setCloudPhotos(v);
+                    storage.setSetting('FEATURE_CLOUD_PHOTOS', String(v));
+                  }}
+                />
+              }
             />
-          </div>
-        </Section>
+          </SettingsCard>
+        </>
       ) : (
-        <Section title="Cloud Sync">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Cloud size={16} color="var(--accent-blue)" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>Synced via Firebase</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Your data syncs automatically across all devices.
-              </div>
-            </div>
-            {isFirebaseConfigured && (
-              <button
-                onClick={() => signOut(auth)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '7px 12px',
-                  borderRadius: 8,
-                  border: '1px solid rgba(224,92,92,0.25)',
-                  background: 'rgba(224,92,92,0.07)',
-                  color: 'var(--accent-red)',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                <LogOut size={13} /> Sign Out
-              </button>
-            )}
-          </div>
-        </Section>
+        <>
+          <SectionLabel label="Sync" />
+          <SettingsCard>
+            <SettingsRow
+              icon={Cloud}
+              iconBg="rgba(76,175,125,0.1)"
+              iconColor="var(--accent-green)"
+              label="Cloud Sync Active"
+              description="Data syncs in real-time across all devices"
+              right={
+                <div style={{
+                  display:    'flex',
+                  alignItems: 'center',
+                  gap:        5,
+                  padding:    '3px 9px',
+                  borderRadius: 20,
+                  background: 'rgba(76,175,125,0.1)',
+                  border:     '1px solid rgba(76,175,125,0.18)',
+                  fontSize:   10,
+                  fontWeight: 700,
+                  color:      'var(--accent-green)',
+                }}>
+                  <div style={{
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: 'var(--accent-green)',
+                    boxShadow: '0 0 5px rgba(76,175,125,0.8)',
+                  }} />
+                  Live
+                </div>
+              }
+            />
+          </SettingsCard>
+        </>
       )}
 
-      {/* Public Storefront — web only */}
+      {/* ── Public Storefront (web + Firebase) ── */}
       {!isElectron && isFirebaseConfigured && (
-        <Section title="Public Storefront" description="Share a public page where anyone can browse your available items.">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Toggle
-              label="Enable Public Storefront"
-              description={storefrontEnabled ? 'Your items are publicly visible' : 'Enable to share a public shop link'}
-              value={storefrontEnabled}
-              onChange={handleStorefrontToggle}
+        <>
+          <SectionLabel label="Public Storefront" />
+          <SettingsCard>
+            <SettingsRow
+              icon={Globe}
+              iconBg="rgba(255,203,116,0.1)"
+              iconColor="var(--accent-gold)"
+              label="Public Storefront"
+              description={storefrontEnabled ? 'Your items are publicly visible' : 'Share a browseable shop link'}
+              right={<Toggle value={storefrontEnabled} onChange={handleStorefrontToggle} />}
             />
 
             {storefrontEnabled && storefrontUrl && (
-              <div style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(212,168,83,0.2)', borderRadius: 10, padding: '10px 14px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent-gold-dim)', marginBottom: 6 }}>
-                  Your Shop URL
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
-                    {storefrontUrl}
-                  </span>
-                  <button
-                    onClick={copyUrl}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: '1px solid rgba(212,168,83,0.25)', background: 'rgba(212,168,83,0.07)', color: urlCopied ? 'var(--accent-green)' : 'var(--accent-gold)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}
-                  >
-                    {urlCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                  </button>
-                  <a
-                    href={storefrontUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 11, textDecoration: 'none', flexShrink: 0 }}
-                  >
-                    <Globe size={11} /> Open
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {storefrontEnabled && (
               <>
-                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Profile</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <RowDivider />
+                <SettingsRow
+                  icon={Link}
+                  label="Shop URL"
+                  description={storefrontUrl}
+                  right={
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={copyUrl}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '5px 10px', borderRadius: 7,
+                          border: '1px solid rgba(255,203,116,0.25)',
+                          background: 'rgba(255,203,116,0.07)',
+                          color: urlCopied ? 'var(--accent-green)' : 'var(--accent-gold)',
+                          fontSize: 11, cursor: 'pointer', fontWeight: 500,
+                          transition: 'color 100ms',
+                        }}
+                      >
+                        {urlCopied
+                          ? <><Check size={11} /> Copied</>
+                          : <><Copy size={11} /> Copy</>}
+                      </button>
+                      <a
+                        href={storefrontUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '5px 10px', borderRadius: 7,
+                          border: '1px solid var(--border-subtle)',
+                          color: 'var(--text-secondary)',
+                          fontSize: 11, textDecoration: 'none', fontWeight: 500,
+                        }}
+                      >
+                        <Globe size={11} /> Open
+                      </a>
+                    </div>
+                  }
+                />
+
+                <RowDivider />
+                <SettingsRow
+                  icon={RefreshCw}
+                  label="Sync Inventory"
+                  description="Push latest items to your public page"
+                  right={
+                    <button
+                      onClick={handleSyncStorefront}
+                      disabled={storefrontSyncing}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px', borderRadius: 8,
+                        border: '1px solid rgba(255,203,116,0.22)',
+                        background: 'rgba(255,203,116,0.07)',
+                        color: storefrontSyncing ? 'var(--text-tertiary)' : 'var(--accent-gold)',
+                        fontSize: 11, cursor: 'pointer', fontWeight: 500,
+                        opacity: storefrontSyncing ? 0.65 : 1,
+                        transition: 'opacity 100ms',
+                      }}
+                    >
+                      <RefreshCw
+                        size={12}
+                        style={storefrontSyncing ? { animation: 'spin 1s linear infinite' } : {}}
+                      />
+                      {storefrontSyncing ? 'Syncing…' : 'Sync Now'}
+                    </button>
+                  }
+                />
+              </>
+            )}
+          </SettingsCard>
+
+          {/* Storefront profile inputs */}
+          {storefrontEnabled && (
+            <>
+              <SectionLabel label="Storefront Profile" />
+              <SettingsCard overflow="visible">
+                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <input
                     value={sfDisplayName}
                     onChange={e => setSfDisplayName(e.target.value)}
@@ -289,91 +591,114 @@ export default function Settings() {
                     value={sfContact}
                     onChange={e => setSfContact(e.target.value)}
                     onBlur={saveStorefrontProfile}
-                    placeholder="Contact info shown to buyers (email, phone, etc.)"
+                    placeholder="Contact info shown to buyers (email, phone…)"
                     style={inputStyle}
                   />
+                  <p style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: '2px 0 0' }}>
+                    Changes save automatically. Deploy{' '}
+                    <a
+                      href="https://firebase.google.com/docs/firestore/security/rules-overview"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--accent-gold-dim)' }}
+                    >
+                      Firestore rules
+                    </a>
+                    {' '}to allow public reads on the{' '}
+                    <code style={{ fontFamily: 'var(--font-mono)', fontSize: 9 }}>storefronts</code>
+                    {' '}collection.
+                  </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>Sync Inventory</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                      Push latest items to your public page
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleSyncStorefront}
-                    disabled={storefrontSyncing}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(212,168,83,0.25)', background: 'rgba(212,168,83,0.07)', color: storefrontSyncing ? 'var(--text-tertiary)' : 'var(--accent-gold)', fontSize: 12, cursor: 'pointer', opacity: storefrontSyncing ? 0.7 : 1 }}
-                  >
-                    <RefreshCw size={12} style={storefrontSyncing ? { animation: 'spin 1s linear infinite' } : {}} />
-                    {storefrontSyncing ? 'Syncing…' : 'Sync Now'}
-                  </button>
-                </div>
-              </>
-            )}
-
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-              Note: after enabling, deploy <a href="https://firebase.google.com/docs/firestore/security/rules-overview" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-gold-dim)' }}>Firestore rules</a> to allow public reads on the <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>storefronts</code> collection.
-            </div>
-          </div>
-        </Section>
+              </SettingsCard>
+            </>
+          )}
+        </>
       )}
 
-      <Section title="Data" description="Export your inventory data.">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>Export All as CSV</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{items.length} items</div>
-          </div>
-          <button
-            onClick={exportAll}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '7px 14px',
-              borderRadius: 8,
+      {/* ── Data ── */}
+      <SectionLabel label="Data" />
+      <SettingsCard>
+        <SettingsRow
+          icon={Download}
+          label="Export as CSV"
+          description={`${items.length} item${items.length !== 1 ? 's' : ''} · full inventory snapshot`}
+          onClick={exportAll}
+          right={
+            <div style={{
+              padding: '5px 12px', borderRadius: 8,
               border: '1px solid var(--border-subtle)',
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
-          >
-            <Download size={13} />
-            Export
-          </button>
-        </div>
-      </Section>
+              fontSize: 11, color: 'var(--text-secondary)',
+              fontWeight: 500, pointerEvents: 'none',
+            }}>
+              Export
+            </div>
+          }
+        />
+      </SettingsCard>
 
-      <Section title="About">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Version</span>
-            <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1.0.0</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total items</span>
-            <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{items.length}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total earned</span>
-            <span style={{ fontSize: 12, color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(stats.totalEarned)}
+      {/* ── About ── */}
+      <SectionLabel label="About" />
+      <SettingsCard>
+        <SettingsRow
+          icon={Info}
+          label="Version"
+          right={
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              1.0.0
             </span>
-          </div>
-        </div>
-      </Section>
+          }
+        />
+        <RowDivider />
+        <SettingsRow
+          icon={Package}
+          label="Total Items"
+          right={
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
+              {items.length}
+            </span>
+          }
+        />
+        <RowDivider />
+        <SettingsRow
+          icon={TrendingUp}
+          iconBg="rgba(76,175,125,0.08)"
+          iconColor="var(--accent-green)"
+          label="Total Earned"
+          right={
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, color: 'var(--accent-green)' }}>
+              {fmtCur(stats?.totalEarned ?? 0)}
+            </span>
+          }
+        />
+      </SettingsCard>
+
+      {/* ── Account / Sign Out ── */}
+      {isFirebaseConfigured && !isElectron && (
+        <>
+          <SectionLabel label="Account" />
+          <SettingsCard>
+            <SettingsRow
+              icon={LogOut}
+              label="Sign Out"
+              danger
+              onClick={() => signOut(auth)}
+            />
+          </SettingsCard>
+        </>
+      )}
+
     </div>
   );
 }
 
 const inputStyle = {
-  background: 'var(--bg-elevated)',
-  border: '1px solid var(--border-subtle)',
+  background:   'var(--bg-elevated)',
+  border:       '1px solid var(--border-subtle)',
   borderRadius: 8,
-  padding: '8px 10px',
-  fontSize: 13,
-  color: 'var(--text-primary)',
-  outline: 'none',
-  width: '100%',
-  fontFamily: 'var(--font-body)',
+  padding:      '9px 12px',
+  fontSize:     13,
+  color:        'var(--text-primary)',
+  outline:      'none',
+  width:        '100%',
+  fontFamily:   'var(--font-body)',
 };
