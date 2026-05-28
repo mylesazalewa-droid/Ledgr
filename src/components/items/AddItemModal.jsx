@@ -216,10 +216,18 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
 
     if (step === 2) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <InputField label="Make / Brand" value={make}  onChange={setMake}  placeholder="e.g. Sony" />
-          <InputField label="Model"        value={model} onChange={setModel} placeholder="e.g. WH-1000XM5" />
-        </div>
+        {/* Make + Model — side by side on desktop, stacked on mobile */}
+        {isMobile ? (
+          <>
+            <InputField label="Make / Brand" value={make}  onChange={setMake}  placeholder="e.g. Sony" />
+            <InputField label="Model"        value={model} onChange={setModel} placeholder="e.g. WH-1000XM5" />
+          </>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <InputField label="Make / Brand" value={make}  onChange={setMake}  placeholder="e.g. Sony" />
+            <InputField label="Model"        value={model} onChange={setModel} placeholder="e.g. WH-1000XM5" />
+          </div>
+        )}
 
         {/* AI fill — shown when make or model is entered and API key is set */}
         {geminiKey && (make.trim() || model.trim()) && (
@@ -268,11 +276,20 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
             <button onClick={() => setQuantity(q => q + 1)} style={{ padding: '7px 14px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', lineHeight: 1 }}>+</button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <PriceInput label="Cost Paid"    value={costPrice}   onChange={setCostPrice}   />
-          <PriceInput label="Est. Value"   value={estValue}    onChange={setEstValue}    />
-          <PriceInput label="Asking Price" value={askingPrice} onChange={setAskingPrice} />
-        </div>
+        {/* Prices — stacked on mobile, 3-col grid on desktop */}
+        {isMobile ? (
+          <>
+            <PriceInput label="Cost Paid"    value={costPrice}   onChange={setCostPrice}   />
+            <PriceInput label="Est. Value"   value={estValue}    onChange={setEstValue}    />
+            <PriceInput label="Asking Price" value={askingPrice} onChange={setAskingPrice} />
+          </>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <PriceInput label="Cost Paid"    value={costPrice}   onChange={setCostPrice}   />
+            <PriceInput label="Est. Value"   value={estValue}    onChange={setEstValue}    />
+            <PriceInput label="Asking Price" value={askingPrice} onChange={setAskingPrice} />
+          </div>
+        )}
       </div>
     );
 
