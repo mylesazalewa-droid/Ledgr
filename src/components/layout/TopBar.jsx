@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Search, X, ChevronDown, Check, Plus } from 'lucide-react';
+import { Search, X, ChevronDown, Check, Plus, MessageCircle } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
@@ -178,6 +178,42 @@ function HomePicker({ onClose }) {
   );
 }
 
+function MsgBell() {
+  const { unreadMessages, setCurrentPage } = useApp();
+  return (
+    <button
+      onClick={() => setCurrentPage('settings')}
+      style={{
+        position: 'relative',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'none', border: 'none', cursor: 'pointer',
+        padding: 6, flexShrink: 0,
+        WebkitAppRegion: 'no-drag',
+      }}
+    >
+      <MessageCircle
+        size={20}
+        color={unreadMessages > 0 ? 'var(--accent-gold)' : 'var(--text-tertiary)'}
+        strokeWidth={unreadMessages > 0 ? 2.2 : 1.6}
+      />
+      {unreadMessages > 0 && (
+        <div style={{
+          position: 'absolute', top: 1, right: 1,
+          minWidth: 15, height: 15, borderRadius: 8,
+          background: 'var(--accent-gold)',
+          color: '#000',
+          fontSize: 9, fontWeight: 800,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 3px',
+          lineHeight: 1,
+        }}>
+          {unreadMessages > 9 ? '9+' : unreadMessages}
+        </div>
+      )}
+    </button>
+  );
+}
+
 export default function TopBar() {
   const { currentPage, searchQuery, setSearchQuery, searchFocusTrigger,
           homes, activeHomeId } = useApp();
@@ -284,6 +320,9 @@ export default function TopBar() {
               </button>
             </div>
           )}
+
+          {/* Message bell — right side on mobile */}
+          <MsgBell />
         </>
       ) : (
         // Desktop
@@ -340,10 +379,11 @@ export default function TopBar() {
             )}
           </div>
 
-          <div style={{ minWidth: 100, textAlign: 'right', WebkitAppRegion: 'no-drag' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 100, justifyContent: 'flex-end', WebkitAppRegion: 'no-drag' }}>
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
               ⌘N new · ⌘, settings
             </span>
+            <MsgBell />
           </div>
         </>
       )}
