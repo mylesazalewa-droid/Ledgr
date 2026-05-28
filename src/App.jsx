@@ -14,6 +14,7 @@ import AuthScreen from './components/auth/AuthScreen.jsx';
 import { useItems } from './hooks/useItems.js';
 import { useCategories } from './hooks/useCategories.js';
 import { useHomes } from './hooks/useHomes.js';
+import { useMessages } from './hooks/useMessages.js';
 import { computeStats } from './utils/computeStats.js';
 import { isFirebaseConfigured, auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -63,6 +64,7 @@ function AppInner() {
   const { items: allItems, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
   const { homes, addHome, updateHome, deleteHome } = useHomes();
+  const { messages: buyerMessages, unreadCount: unreadMessages, markRead: markMessageRead, markAllRead: markAllMessagesRead } = useMessages();
 
   // ── Active home ────────────────────────────────────────────────────────────
   const [activeHomeId, setActiveHomeIdRaw] = useState(() => {
@@ -114,6 +116,24 @@ function AppInner() {
       }, i * 900);
     });
   }, [stats]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Buyer message notifications ────────────────────────────────────────────
+  const msgInitRef  = useRef(false);
+  const seenMsgIds  = useRef(new Set());
+  useEffect(() => {
+    if (!msgInitRef.current) {
+      msgInitRef.current = true;
+      buyerMessages.forEach(m => seenMsgIds.current.add(m.id));
+      return;
+    }
+    const fresh = buyerMessages.filter(m => !seenMsgIds.current.has(m.id));
+    fresh.forEach(m => seenMsgIds.current.add(m.id));
+    fresh.forEach((m, i) => {
+      setTimeout(() => {
+        toast(`💬 ${m.buyerName} is interested in ${m.itemName}`, 'info', 6000, m.message);
+      }, i * 900);
+    });
+  }, [buyerMessages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Client-side filter + sort
   const filteredItems = sortItems(
@@ -235,6 +255,7 @@ function AppInner() {
     addCategory, updateCategory, deleteCategory,
     addHome, updateHome, deleteHome,
     refetchItems, refetchStats,
+    buyerMessages, unreadMessages, markMessageRead, markAllMessagesRead,
     toast,
   };
 

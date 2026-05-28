@@ -277,7 +277,7 @@ function AccountHeader({ user, items, stats }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const { items, stats, toast } = useApp();
+  const { items, stats, toast, buyerMessages, unreadMessages, markMessageRead, markAllMessagesRead } = useApp();
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [cloudPhotos, setCloudPhotos] = useState(false);
 
@@ -707,6 +707,67 @@ export default function Settings() {
           }
         />
       </SettingsCard>
+
+      {/* ── Buyer Messages ── */}
+      {isFirebaseConfigured && !isElectron && buyerMessages.length > 0 && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 4px 8px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
+              Inbox
+              {unreadMessages > 0 && (
+                <span style={{ marginLeft: 7, background: 'var(--accent-gold)', color: '#000', fontSize: 9, fontWeight: 800, borderRadius: 10, padding: '1px 6px' }}>
+                  {unreadMessages} new
+                </span>
+              )}
+            </div>
+            {unreadMessages > 0 && (
+              <button
+                onClick={markAllMessagesRead}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--text-tertiary)', padding: 0 }}
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+          <SettingsCard>
+            {buyerMessages.slice(0, 20).map((msg, i) => (
+              <div key={msg.id}>
+                {i > 0 && <RowDivider />}
+                <div
+                  onClick={() => markMessageRead(msg.id)}
+                  style={{
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    background: msg.read ? 'transparent' : 'rgba(255,203,116,0.04)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      {!msg.read && (
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-gold)', flexShrink: 0 }} />
+                      )}
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {msg.buyerName || 'Anonymous'}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        re: {msg.itemName}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                      {msg.timestamp?.toDate
+                        ? new Date(msg.timestamp.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : ''}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginLeft: msg.read ? 0 : 13 }}>
+                    {msg.message}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </SettingsCard>
+        </>
+      )}
 
       {/* ── Account / Sign Out ── */}
       {isFirebaseConfigured && !isElectron && (

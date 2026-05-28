@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase.js';
 
 function fmt(n) {
@@ -471,7 +471,7 @@ export default function Storefront({ userId }) {
 
       {/* Item detail overlay */}
       {selected && (
-        <ItemOverlay item={selected} onClose={() => setSelected(null)} sellerContact={storefront.contactInfo} />
+        <ItemOverlay item={selected} onClose={() => setSelected(null)} sellerContact={storefront.contactInfo} sellerId={userId} />
       )}
     </div>
   );
@@ -530,7 +530,33 @@ function StorefrontCard({ item, onSelect }) {
   );
 }
 
-function ItemOverlay({ item, onClose, sellerContact }) {
+function ItemOverlay({ item, onClose, sellerContact, sellerId }) {
+  const [showMsgForm, setShowMsgForm] = useState(!sellerContact);
+  const [msgName,     setMsgName]     = useState('');
+  const [msgText,     setMsgText]     = useState('');
+  const [msgSent,     setMsgSent]     = useState(false);
+  const [msgSending,  setMsgSending]  = useState(false);
+
+  async function sendMessage() {
+    if (!msgText.trim() || !sellerId) return;
+    setMsgSending(true);
+    try {
+      await addDoc(collection(db, 'messages', sellerId, 'inbox'), {
+        buyerName:  msgName.trim() || 'Someone',
+        message:    msgText.trim(),
+        itemName:   item.name  || 'an item',
+        itemId:     item.id    || '',
+        itemPrice:  item.asking_price || 0,
+        timestamp:  serverTimestamp(),
+        read:       false,
+      });
+      setMsgSent(true);
+    } catch (err) {
+      console.error('Message send failed:', err);
+    }
+    setMsgSending(false);
+  }
+
   function handleBackdrop(e) {
     if (e.target === e.currentTarget) onClose();
   }
@@ -644,15 +670,49 @@ function ItemOverlay({ item, onClose, sellerContact }) {
 
           {/* Actions */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {contactHref ? (
+            {contactHref && (
               <a href={contactHref} className="sf-btn-primary">
                 Contact Seller
               </a>
-            ) : (
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0' }}>
-                Message the seller to purchase this item.
-              </div>
             )}
+
+            {/* In-app message form */}
+            {showMsgForm ? (
+              msgSent ? (
+                <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--accent-green)', fontSize: 13, fontWeight: 600 }}>
+                  ✓ Message sent! The seller will be notified.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  <input
+                    value={msgName}
+                    onChange={e => setMsgName(e.target.value)}
+                    placeholder="Your name (optional)"
+                    style={sfInputStyle}
+                  />
+                  <textarea
+                    value={msgText}
+                    onChange={e => setMsgText(e.target.value)}
+                    placeholder={`Message about ${item.name || 'this item'}…`}
+                    rows={3}
+                    style={{ ...sfInputStyle, resize: 'none' }}
+                  />
+                  <button
+                    className={contactHref ? 'sf-btn-secondary' : 'sf-btn-primary'}
+                    onClick={sendMessage}
+                    disabled={!msgText.trim() || msgSending}
+                    style={{ opacity: (!msgText.trim() || msgSending) ? 0.55 : 1 }}
+                  >
+                    {msgSending ? 'Sending…' : 'Send Message'}
+                  </button>
+                </div>
+              )
+            ) : (
+              <button className="sf-btn-secondary" onClick={() => setShowMsgForm(true)}>
+                Send Message
+              </button>
+            )}
+
             <button className="sf-btn-secondary" onClick={shareItem}>
               Share Item
             </button>
@@ -667,5 +727,17 @@ const pageStyle = {
   minHeight: '100vh',
   background: '#111111',
   color: '#f6f6f6',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
+const sfInputStyle = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 10,
+  padding: '10px 13px',
+  fontSize: 14,
+  color: 'var(--text-primary)',
+  outline: 'none',
+  width: '100%',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
