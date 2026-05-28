@@ -20,10 +20,16 @@ export default function Layout({ children }) {
           flex: 1,
           overflow: 'auto',
           background: 'var(--bg-base)',
-          // nav pill (~68px) + top margin (8px) + gap from safe area (env)
-          paddingBottom: 'calc(84px + env(safe-area-inset-bottom))',
         }}>
-          {children}
+          {/*
+           * Inner wrapper carries the bottom padding — NOT the scroll container.
+           * iOS Safari ignores padding-bottom on overflow:auto elements when
+           * computing scroll extent, so this keeps the last content visible
+           * above the fixed BottomNav on every page.
+           */}
+          <div style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
+            {children}
+          </div>
         </main>
         <BottomNav />
       </div>

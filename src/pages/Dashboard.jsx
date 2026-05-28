@@ -101,7 +101,7 @@ export default function Dashboard() {
   const pad = isMobile ? 16 : 24;
 
   return (
-    <div style={{ padding: pad, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: pad, paddingBottom: pad + 8, maxWidth: 1100, margin: '0 auto' }}>
 
       {/* ── Greeting ── */}
       {isMobile && (
