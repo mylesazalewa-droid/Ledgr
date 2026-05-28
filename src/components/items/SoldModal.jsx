@@ -1,7 +1,50 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, CheckCircle } from 'lucide-react';
 import PriceInput from '../shared/PriceInput.jsx';
+
+// ── Confetti burst ────────────────────────────────────────────────────────────
+const CONFETTI_COLORS = ['#ffcb74', '#4caf7d', '#5b8ef0', '#e05c5c', '#ffffff', '#ff9f43', '#c084fc', '#38bdf8'];
+
+function Confetti() {
+  const [particles] = useState(() =>
+    Array.from({ length: 65 }, (_, i) => ({
+      id: i,
+      left:  12 + Math.random() * 76,
+      top:   30 + Math.random() * 40,
+      w:     4  + Math.random() * 6,
+      h:     4  + Math.random() * 11,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      delay: Math.random() * 0.42,
+      dur:   0.6 + Math.random() * 0.6,
+      round: Math.random() > 0.48,
+      rot:   Math.floor(Math.random() * 360),
+    }))
+  );
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none' }}>
+      {particles.map(p => (
+        <div
+          key={p.id}
+          style={{
+            position:     'absolute',
+            left:         `${p.left}%`,
+            top:          `${p.top}%`,
+            width:        p.w,
+            height:       p.round ? p.w : p.h,
+            background:   p.color,
+            borderRadius: p.round ? '50%' : 2,
+            transform:    `rotate(${p.rot}deg)`,
+            animation:    `confettiBurst ${p.dur}s ease-out ${p.delay}s both`,
+          }}
+        />
+      ))}
+    </div>,
+    document.body
+  );
+}
 
 const PLATFORMS = ['eBay', 'Facebook Marketplace', 'Depop', 'Poshmark', 'OfferUp', 'Mercari', 'Craigslist', 'Vinted', 'Other'];
 
@@ -58,6 +101,8 @@ export default function SoldModal({ item, onClose, onConfirm, defaultPlatform = 
   }
 
   return (
+    <>
+    {done && <Confetti />}
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -213,6 +258,7 @@ export default function SoldModal({ item, onClose, onConfirm, defaultPlatform = 
         )}
       </motion.div>
     </motion.div>
+    </>
   );
 }
 

@@ -49,20 +49,24 @@ export default function BottomNav() {
       left: 0,
       right: 0,
       zIndex: 200,
-      background: 'var(--bg-void)',
+      /* Glass: transparent so ambient content blurs through */
+      background: 'rgba(10, 10, 16, 0.78)',
+      backdropFilter: 'blur(32px) saturate(160%)',
+      WebkitBackdropFilter: 'blur(32px) saturate(160%)',
       paddingBottom: 'calc(200px + env(safe-area-inset-bottom))',
       overflow: 'hidden',
+      borderTop: '1px solid rgba(255,255,255,0.06)',
     }}>
 
       {/* Floating pill */}
       <nav style={{
         margin: '8px 12px',
-        background: '#1c1c22',
+        background: 'rgba(255,255,255,0.04)',
         borderRadius: 28,
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.09)',
         display: 'flex',
         alignItems: 'center',
-        boxShadow: '0 -2px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07)',
       }}>
         {NAV_ITEMS.slice(0, 2).map(item => (
           <NavTab key={item.id} item={item} active={currentPage === item.id} onPress={() => navigate(item.id)} />

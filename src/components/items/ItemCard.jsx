@@ -224,62 +224,109 @@ export default function ItemCard({ item, index = 0, bulkMode = false, selected =
         style={{
           background: 'var(--bg-surface)',
           borderRadius: 'var(--radius-card)',
-          border: `1px solid ${hovered ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
+          border: `1px solid ${
+            hovered
+              ? (category ? category.color + '66' : 'var(--border-accent)')
+              : 'var(--border-subtle)'
+          }`,
           overflow: 'hidden',
           cursor: 'pointer',
           position: 'relative',
           boxShadow: hovered
-            ? '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px var(--border-accent)'
+            ? `0 12px 40px rgba(0,0,0,0.65)${category ? `, 0 0 22px ${category.color}22` : ''}`
             : 'var(--shadow-card)',
           transition: 'border-color 80ms, box-shadow 80ms',
         }}
       >
-        {/* Category color bar */}
-        {category && (
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: category.color, zIndex: 1 }} />
-        )}
+        {/* Photo — 3:2 ratio, photo-first layout */}
+        <div style={{ width: '100%', aspectRatio: '3/2', background: 'var(--bg-elevated)', overflow: 'hidden', position: 'relative' }}>
 
-        {/* Photo */}
-        <div style={{ width: '100%', aspectRatio: '16/10', background: 'var(--bg-elevated)', overflow: 'hidden', position: 'relative' }}>
+          {/* Category gradient stripe — top edge */}
+          {category && (
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 3,
+              background: `linear-gradient(90deg, ${category.color} 0%, ${category.color}55 55%, transparent 100%)`,
+            }} />
+          )}
+
           {photoDataUrl ? (
             <img
               src={photoDataUrl}
               alt={item.name}
               style={{
                 width: '100%', height: '100%', objectFit: 'cover',
-                transition: 'transform 300ms ease',
-                transform: hovered ? 'scale(1.04)' : 'scale(1)',
+                transition: 'transform 320ms ease',
+                transform: hovered ? 'scale(1.05)' : 'scale(1)',
               }}
             />
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 26 }}>
-              📦
+            /* Premium letter placeholder — no more cardboard box emoji */
+            <div style={{
+              width: '100%', height: '100%',
+              background: category
+                ? `linear-gradient(145deg, ${category.color}28 0%, ${category.color}08 100%)`
+                : 'linear-gradient(145deg, rgba(255,203,116,0.1) 0%, rgba(255,203,116,0.02) 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 48, fontStyle: 'italic', lineHeight: 1, userSelect: 'none',
+                color: category ? `${category.color}55` : 'rgba(255,203,116,0.22)',
+              }}>
+                {item.name?.[0]?.toUpperCase() || '?'}
+              </span>
             </div>
           )}
+
+          {/* Gradient scrim — name + price live here */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)',
+            zIndex: 2,
+          }} />
+
+          {/* Name + price overlay */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 10px', zIndex: 3 }}>
+            <div style={{
+              fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.25,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              marginBottom: 5,
+            }}>
+              {item.name}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{
+                fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700,
+                color: item.status === 'sold' ? 'rgba(255,255,255,0.5)' : 'var(--accent-gold)',
+              }}>
+                {item.status === 'sold' ? fmt(item.sold_price) : fmt(item.asking_price)}
+              </span>
+              <StatusBadge status={item.status} />
+            </div>
+          </div>
 
           {/* Age badge */}
           {daysListed !== null && daysListed >= 14 && (
             <div style={{
-              position: 'absolute', top: 6, right: 6, zIndex: 2,
-              background: 'rgba(0,0,0,0.65)',
+              position: 'absolute', top: 10, right: 8, zIndex: 4,
+              background: 'rgba(0,0,0,0.68)',
               color: ageColor,
               fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-mono)',
               padding: '2px 6px', borderRadius: 20,
-              backdropFilter: 'blur(4px)',
+              backdropFilter: 'blur(6px)',
             }}>
               {daysListed}d
             </div>
           )}
 
           {/* Quantity badge */}
-          {(item.quantity || 1) > 1 && (
+          {!bulkMode && (item.quantity || 1) > 1 && (
             <div style={{
-              position: 'absolute', bottom: 6, right: 6, zIndex: 2,
+              position: 'absolute', top: 10, left: 8, zIndex: 4,
               background: 'rgba(212,168,83,0.9)',
               color: '#0a0a0b',
               fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)',
               padding: '2px 6px', borderRadius: 20,
-              backdropFilter: 'blur(4px)',
             }}>
               ×{item.quantity}
             </div>
@@ -288,10 +335,10 @@ export default function ItemCard({ item, index = 0, bulkMode = false, selected =
           {/* Bulk selection checkbox */}
           {bulkMode && (
             <div style={{
-              position: 'absolute', top: 6, left: 6, zIndex: 3,
+              position: 'absolute', top: 8, left: 8, zIndex: 5,
               width: 22, height: 22, borderRadius: 6,
               border: `2px solid ${selected ? 'var(--accent-gold)' : 'rgba(255,255,255,0.5)'}`,
-              background: selected ? 'var(--accent-gold)' : 'rgba(0,0,0,0.45)',
+              background: selected ? 'var(--accent-gold)' : 'rgba(0,0,0,0.5)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 120ms',
             }}>
@@ -300,28 +347,17 @@ export default function ItemCard({ item, index = 0, bulkMode = false, selected =
           )}
         </div>
 
-        {/* Content */}
-        <div style={{ padding: '10px 14px 12px 16px' }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>
-            {item.name}
+        {/* Make/model — compact strip, only when present */}
+        {(item.make || item.model) && (
+          <div style={{
+            padding: '6px 10px 8px',
+            fontSize: 10, color: 'var(--text-tertiary)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            borderTop: '1px solid rgba(255,255,255,0.04)',
+          }}>
+            {[item.make, item.model].filter(Boolean).join(' · ')}
           </div>
-          {(item.make || item.model) && (
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 8 }}>
-              {[item.make, item.model].filter(Boolean).join(' · ')}
-            </div>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 14,
-              fontWeight: 500,
-              color: item.status === 'sold' ? 'var(--text-secondary)' : 'var(--accent-gold)',
-            }}>
-              {item.status === 'sold' ? fmt(item.sold_price) : fmt(item.asking_price)}
-            </span>
-            <StatusBadge status={item.status} />
-          </div>
-        </div>
+        )}
       </motion.div>
 
       {/* Context menu */}

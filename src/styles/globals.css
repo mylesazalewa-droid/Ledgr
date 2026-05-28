@@ -22,10 +22,11 @@
 }
 
 :root {
-  --bg-void:     #111111;
-  --bg-base:     #161616;
-  --bg-surface:  #1c1c1c;
-  --bg-elevated: #2f2f2f;
+  /* ── Blue-void dark palette — richer, display-grade depth ── */
+  --bg-void:     #0d0d12;
+  --bg-base:     #111118;
+  --bg-surface:  #17171f;
+  --bg-elevated: #23232e;
   --bg-overlay:  rgba(255, 255, 255, 0.04);
 
   --accent-gold:     #ffcb74;
@@ -60,7 +61,21 @@ html, body, #root {
 html {
   /* Prevents the rubber-band / pinch-zoom-out black gap on iOS */
   overscroll-behavior: none;
-  background: #111111;
+  background: #0d0d12;
+}
+
+/* ── Ambient warm glow behind the whole app ─────────────────────────────── */
+#root::before {
+  content: '';
+  position: fixed;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(780px, 130vw);
+  height: 460px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,203,116,0.055) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 body {
@@ -284,6 +299,13 @@ button {
 .icon-float {
   animation: iconFloat 3.2s ease-in-out infinite;
   will-change: transform;
+}
+
+/* ─── Confetti burst ─────────────────────────────────────────────────────── */
+@keyframes confettiBurst {
+  0%   { transform: translateY(0)      rotate(0deg);   opacity: 1;   }
+  70%  { opacity: 1; }
+  100% { transform: translateY(-300px) rotate(540deg); opacity: 0;   }
 }
 
 /* ─── Pulse (used by legacy skeleton) ───────────────────────────────────── */

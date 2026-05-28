@@ -42,7 +42,7 @@ function useCountUp(target, duration = 1400) {
 }
 
 export default function Dashboard() {
-  const { stats, setCurrentPage, setShowAddModal, toast } = useApp();
+  const { stats, items, categories, setCurrentPage, setShowAddModal, toast } = useApp();
   const isMobile    = useIsMobile();
   const [hoveredAch,  setHoveredAch]  = useState(null);
   const [shownDescAch, setShownDescAch] = useState(null); // long-press on mobile
@@ -262,6 +262,11 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* ── Insights Strip ── */}
+      <div style={{ animation: 'fadeSlideUp 0.4s cubic-bezier(0.32,0.72,0,1) 0.22s both' }}>
+        <InsightsStrip items={items} categories={categories} />
+      </div>
+
       {/* ── Charts + Activity ── */}
       <div style={{
         display: 'grid',
@@ -273,6 +278,9 @@ export default function Dashboard() {
         <EarningsChart monthlyEarnings={stats.monthlyEarnings} />
         <RecentActivity />
       </div>
+
+      {/* ── Sales Heatmap ── */}
+      <SalesHeatmap items={items} />
 
       {/* ── Needs Attention ── */}
       {hasAttention && (
@@ -504,6 +512,233 @@ function MiniStatCard({ label, value, color }) {
       </div>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color }}>
         {value}
+      </div>
+    </div>
+  );
+}
+
+// ── Insights Strip ────────────────────────────────────────────────────────────
+function InsightsStrip({ items, categories }) {
+  const soldItems = (items || []).filter(i => i.status === 'sold');
+  if (soldItems.length === 0) return null;
+
+  const now            = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+  const thisMonthEarned = soldItems
+    .filter(i => i.sold_at && new Date(i.sold_at) >= thisMonthStart)
+    .reduce((s, i) => s + (i.sold_price || 0), 0);
+  const lastMonthEarned = soldItems
+    .filter(i => i.sold_at && new Date(i.sold_at) >= lastMonthStart && new Date(i.sold_at) <= lastMonthEnd)
+    .reduce((s, i) => s + (i.sold_price || 0), 0);
+  const monthDelta = lastMonthEarned > 0
+    ? Math.round(((thisMonthEarned - lastMonthEarned) / lastMonthEarned) * 100)
+    : null;
+
+  const sellTimes = soldItems
+    .filter(i => i.sold_at && i.added_at)
+    .map(i => (new Date(i.sold_at) - new Date(i.added_at)) / 86400000);
+  const avgSellTime = sellTimes.length > 0
+    ? Math.round(sellTimes.reduce((s, v) => s + v, 0) / sellTimes.length)
+    : null;
+
+  const platCounts = {};
+  soldItems.forEach(i => {
+    if (i.sold_platform) platCounts[i.sold_platform] = (platCounts[i.sold_platform] || 0) + 1;
+  });
+  const topPlatformEntry = Object.entries(platCounts).sort((a, b) => b[1] - a[1])[0];
+
+  const soldWithCost = soldItems.filter(i => i.cost_price > 0 && i.sold_price > 0);
+  const totalCost    = soldWithCost.reduce((s, i) => s + i.cost_price, 0);
+  const totalProfit  = soldWithCost.reduce((s, i) => s + (i.sold_price - i.cost_price), 0);
+  const roi          = totalCost > 0 ? Math.round((totalProfit / totalCost) * 100) : null;
+
+  const catProfit = {};
+  soldItems.forEach(i => {
+    if (i.category_id && i.cost_price > 0 && i.sold_price > 0)
+      catProfit[i.category_id] = (catProfit[i.category_id] || 0) + (i.sold_price - i.cost_price);
+  });
+  const topCatEntry = Object.entries(catProfit).sort((a, b) => b[1] - a[1])[0];
+  const topCat      = topCatEntry ? (categories || []).find(c => c.id === topCatEntry[0]) : null;
+
+  const insights = [
+    thisMonthEarned > 0 && {
+      label: 'This Month',
+      value: fmt(thisMonthEarned),
+      sub:   monthDelta !== null
+        ? `${monthDelta >= 0 ? '+' : ''}${monthDelta}% vs last month`
+        : 'first month selling',
+      color: 'var(--accent-gold)',
+    },
+    avgSellTime !== null && {
+      label: 'Avg Sell Time',
+      value: `${avgSellTime}d`,
+      sub:   avgSellTime <= 14 ? 'Fast mover 🔥' : avgSellTime <= 45 ? 'Steady pace' : 'Slow burn',
+      color: avgSellTime <= 14 ? 'var(--accent-green)' : avgSellTime <= 45 ? 'var(--accent-gold)' : 'var(--accent-red)',
+    },
+    roi !== null && {
+      label: 'ROI',
+      value: `${roi}%`,
+      sub:   `${soldWithCost.length} tracked sale${soldWithCost.length !== 1 ? 's' : ''}`,
+      color: roi >= 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+    },
+    topPlatformEntry && {
+      label: 'Top Platform',
+      value: topPlatformEntry[0],
+      sub:   `${topPlatformEntry[1]} sale${topPlatformEntry[1] !== 1 ? 's' : ''}`,
+      color: 'var(--accent-blue)',
+    },
+    topCat && {
+      label: 'Best Category',
+      value: topCat.name,
+      sub:   `${fmt(topCatEntry[1])} profit`,
+      color: topCat.color,
+    },
+  ].filter(Boolean);
+
+  if (insights.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div
+        className="no-scrollbar"
+        style={{
+          display: 'flex', gap: 10, overflowX: 'auto',
+          paddingBottom: 4, WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {insights.map((ins, i) => <InsightCard key={i} {...ins} />)}
+      </div>
+    </div>
+  );
+}
+
+function InsightCard({ label, value, sub, color }) {
+  return (
+    <div style={{
+      flexShrink:   0,
+      background:   'var(--bg-surface)',
+      border:       '1px solid var(--border-subtle)',
+      borderRadius: 14,
+      padding:      '12px 14px',
+      minWidth:     118,
+      maxWidth:     148,
+    }}>
+      <div style={{
+        fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 5,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontFamily:   'var(--font-mono)',
+        fontSize:     16,
+        fontWeight:   700,
+        color,
+        marginBottom: 3,
+        overflow:     'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace:   'nowrap',
+      }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.35 }}>
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+// ── Sales Heatmap ─────────────────────────────────────────────────────────────
+function SalesHeatmap({ items }) {
+  const soldItems = (items || []).filter(i => i.status === 'sold' && i.sold_at);
+  if (soldItems.length === 0) return null;
+
+  const soldByDate = {};
+  soldItems.forEach(i => {
+    const d = new Date(i.sold_at).toISOString().split('T')[0];
+    soldByDate[d] = (soldByDate[d] || 0) + 1;
+  });
+
+  const today = new Date();
+  const grid  = Array.from({ length: 364 }, (_, idx) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (363 - idx));
+    const dateStr = d.toISOString().split('T')[0];
+    return { date: dateStr, count: soldByDate[dateStr] || 0 };
+  });
+
+  const weeks = Array.from({ length: 52 }, (_, w) => grid.slice(w * 7, w * 7 + 7));
+
+  const totalSales = grid.reduce((s, d) => s + d.count, 0);
+  const activeDays = grid.filter(d => d.count > 0).length;
+
+  function cellBg(count) {
+    if (count === 0) return 'rgba(255,255,255,0.05)';
+    if (count === 1) return 'rgba(255,203,116,0.28)';
+    if (count === 2) return 'rgba(255,203,116,0.58)';
+    return 'var(--accent-gold)';
+  }
+
+  return (
+    <div style={{
+      background:   'var(--bg-surface)',
+      border:       '1px solid var(--border-subtle)',
+      borderRadius: 14,
+      padding:      '14px 16px',
+      marginBottom: 16,
+      animation:    'fadeSlideUp 0.4s cubic-bezier(0.32,0.72,0,1) 0.28s both',
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10,
+      }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+          textTransform: 'uppercase', color: 'var(--text-secondary)',
+        }}>
+          Sales Activity
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+          {totalSales} sale{totalSales !== 1 ? 's' : ''} · {activeDays} active day{activeDays !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div className="no-scrollbar" style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 2.5, minWidth: 'max-content' }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  title={day.count > 0
+                    ? `${day.date}: ${day.count} sale${day.count !== 1 ? 's' : ''}`
+                    : day.date}
+                  style={{
+                    width:        10,
+                    height:       10,
+                    borderRadius: 2.5,
+                    background:   cellBg(day.count),
+                    flexShrink:   0,
+                    transition:   'background 120ms',
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        marginTop: 8, justifyContent: 'flex-end',
+      }}>
+        <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>Less</span>
+        {[0, 1, 2, 3].map(n => (
+          <div key={n} style={{ width: 9, height: 9, borderRadius: 2, background: cellBg(n) }} />
+        ))}
+        <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>More</span>
       </div>
     </div>
   );
