@@ -14,7 +14,7 @@
  * Returns: { description: string }
  */
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
