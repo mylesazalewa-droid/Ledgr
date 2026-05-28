@@ -78,6 +78,11 @@ function computeStats(items) {
   return { totalItems, soldCount, totalValue, totalEarned, totalCost, totalProfit, avgMargin, monthlyEarnings, longestSitting };
 }
 
+// Default homes — seeded on first use
+const DEFAULT_HOMES = [
+  { id: 'home_default', name: 'My Home', sort_order: 0 },
+];
+
 // Default categories — seeded on first use
 const DEFAULT_CATEGORIES = [
   { id: 'cat_electronics',  name: 'Electronics',  icon: 'Cpu',    color: '#5b8ef0', sort_order: 1  },
@@ -283,6 +288,45 @@ export function createFirestoreAdapter() {
         }
       }
       await deleteDoc(docRef('categories', id));
+      return { success: true };
+    },
+
+    // ---- Homes ----
+    async getHomes() {
+      const snap = await getDocs(query(col('homes'), orderBy('sort_order', 'asc')));
+      if (snap.empty) {
+        const batch = writeBatch(firestoreDb);
+        DEFAULT_HOMES.forEach(h => batch.set(docRef('homes', h.id), h));
+        await batch.commit();
+        return DEFAULT_HOMES;
+      }
+      return snap.docs.map(toItem);
+    },
+
+    async addHome(home) {
+      const id   = nanoid();
+      const data = { id, name: home.name, sort_order: home.sort_order || 99 };
+      await setDoc(docRef('homes', id), data);
+      return data;
+    },
+
+    async updateHome(id, changes) {
+      await updateDoc(docRef('homes', id), changes);
+    },
+
+    async deleteHome(id) {
+      // Reassign items that belong to this home to home_default (or first available)
+      const homesSnap = await getDocs(query(col('homes'), orderBy('sort_order', 'asc')));
+      const first = homesSnap.docs.map(toItem).find(h => h.id !== id);
+      if (first) {
+        const itemsSnap = await getDocs(query(col('items'), where('home_id', '==', id)));
+        if (!itemsSnap.empty) {
+          const batch = writeBatch(firestoreDb);
+          itemsSnap.docs.forEach(d => batch.update(d.ref, { home_id: first.id, updated_at: new Date().toISOString() }));
+          await batch.commit();
+        }
+      }
+      await deleteDoc(docRef('homes', id));
       return { success: true };
     },
 

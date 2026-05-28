@@ -74,6 +74,14 @@ function initSchema(db) {
       ('cat_sports',       'Sports',       'Bike',   '#5bcfcf', 7),
       ('cat_other',        'Other',        'Box',    '#888891', 99);
 
+    CREATE TABLE IF NOT EXISTS homes (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    INSERT OR IGNORE INTO homes (id, name, sort_order) VALUES ('home_default', 'My Home', 0);
+
     INSERT OR IGNORE INTO settings (key, value) VALUES
       ('FEATURE_LOCAL_STORAGE',   'true'),
       ('FEATURE_UNLIMITED_ITEMS', 'true'),
@@ -88,6 +96,9 @@ function runMigrations(db) {
   const cols = db.prepare('PRAGMA table_info(items)').all().map(c => c.name);
   if (!cols.includes('cost_price')) {
     db.exec('ALTER TABLE items ADD COLUMN cost_price REAL DEFAULT 0');
+  }
+  if (!cols.includes('home_id')) {
+    db.exec('ALTER TABLE items ADD COLUMN home_id TEXT');
   }
 }
 
@@ -131,11 +142,11 @@ function addItem(item) {
     INSERT INTO items
       (id, name, make, model, category_id, condition,
        cost_price, est_value, asking_price,
-       status, notes, photo_path, listing_url, added_at, updated_at)
+       status, notes, photo_path, listing_url, home_id, added_at, updated_at)
     VALUES
       (@id, @name, @make, @model, @category_id, @condition,
        @cost_price, @est_value, @asking_price,
-       @status, @notes, @photo_path, @listing_url, @added_at, @updated_at)
+       @status, @notes, @photo_path, @listing_url, @home_id, @added_at, @updated_at)
   `).run({
     id,
     name:         item.name,
@@ -150,6 +161,7 @@ function addItem(item) {
     notes:        item.notes       || null,
     photo_path:   item.photo_path  || null,
     listing_url:  item.listing_url || null,
+    home_id:      item.home_id     || null,
     added_at:     now,
     updated_at:   now,
   });
@@ -161,7 +173,7 @@ function updateItem(id, changes) {
   const allowed = [
     'name', 'make', 'model', 'category_id', 'condition',
     'cost_price', 'est_value', 'asking_price',
-    'status', 'notes', 'photo_path', 'photo_url', 'listing_url',
+    'status', 'notes', 'photo_path', 'photo_url', 'listing_url', 'home_id',
   ];
   const fields = Object.keys(changes).filter(k => allowed.includes(k));
   if (fields.length === 0) return getItem(id);
@@ -238,6 +250,41 @@ function deleteCategory(id) {
   return { success: true };
 }
 
+// ---- Homes ----
+
+function getHomes() {
+  return getDb().prepare('SELECT * FROM homes ORDER BY sort_order ASC').all();
+}
+
+function addHome(home) {
+  const db = getDb();
+  const id = newId();
+  const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM homes').get().m || 0;
+  db.prepare('INSERT INTO homes (id, name, sort_order) VALUES (?, ?, ?)').run(id, home.name, maxOrder + 1);
+  return { id, name: home.name, sort_order: maxOrder + 1 };
+}
+
+function updateHome(id, changes) {
+  const allowed = ['name', 'sort_order'];
+  const fields  = Object.keys(changes).filter(k => allowed.includes(k));
+  if (fields.length === 0) return;
+  const set    = fields.map(f => `${f} = @${f}`).join(', ');
+  const params = { id };
+  fields.forEach(f => { params[f] = changes[f]; });
+  getDb().prepare(`UPDATE homes SET ${set} WHERE id = @id`).run(params);
+}
+
+function deleteHome(id) {
+  const db = getDb();
+  // Reassign items to first remaining home before deleting
+  const first = db.prepare('SELECT id FROM homes WHERE id != ? ORDER BY sort_order ASC LIMIT 1').get(id);
+  if (first) {
+    db.prepare('UPDATE items SET home_id = ? WHERE home_id = ? OR home_id IS NULL').run(first.id, id);
+  }
+  db.prepare('DELETE FROM homes WHERE id = ?').run(id);
+  return { success: true };
+}
+
 // ---- Stats ----
 
 function getStats() {
@@ -289,6 +336,7 @@ function setSetting(key, value) {
 module.exports = {
   getItems, getItem, addItem, updateItem, deleteItem, markSold,
   getCategories, addCategory, updateCategory, deleteCategory,
+  getHomes, addHome, updateHome, deleteHome,
   getStats, getSoldLog,
   getSetting, setSetting,
 };

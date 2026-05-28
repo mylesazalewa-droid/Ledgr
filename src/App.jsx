@@ -13,6 +13,7 @@ import { ToastProvider, useToast } from './components/shared/Toast.jsx';
 import AuthScreen from './components/auth/AuthScreen.jsx';
 import { useItems } from './hooks/useItems.js';
 import { useCategories } from './hooks/useCategories.js';
+import { useHomes } from './hooks/useHomes.js';
 import { useStats } from './hooks/useStats.js';
 import { isFirebaseConfigured, auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -61,6 +62,7 @@ function AppInner() {
 
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { homes, addHome, updateHome, deleteHome } = useHomes();
   const { stats, refetch: refetchStats } = useStats();
 
   // ── Achievement notifications ──────────────────────────────────────────────
@@ -200,12 +202,14 @@ function AppInner() {
     searchFocusTrigger,
     items, filteredItems, itemsLoading,
     categories,
+    homes,
     stats,
     addItem: handleAddItem,
     updateItem: handleUpdateItem,
     deleteItem: handleDeleteItem,
     markSold: handleMarkSold,
     addCategory, updateCategory, deleteCategory,
+    addHome, updateHome, deleteHome,
     refetchItems, refetchStats,
     toast,
   };

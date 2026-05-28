@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, Check, Scan, Loader, Zap,
+import { X, ChevronRight, ChevronLeft, Check, Scan, Loader, Zap, Sparkles,
          Cpu, Home, Shirt, Wrench, Star, Bike, Box } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 import { lookupItemWithAI, lookupUPCWithAI } from '../../services/ai.js';
@@ -16,7 +16,7 @@ const STEPS      = ['Photo', 'Category', 'Details', 'Extras'];
 const LOCATIONS  = ['Living Room', 'Family Room', 'Bedroom', 'Bedroom 2', 'Bedroom 3', 'Bedroom 4', 'Master Closet', 'Kitchen', 'Garage', 'Basement', 'Attic', 'Office', 'Storage'];
 
 export default function AddItemModal({ onClose, initialQuickMode = false }) {
-  const { addItem, categories } = useApp();
+  const { addItem, categories, homes } = useApp();
   const isMobile = useIsMobile();
   const [step,   setStep]   = useState(0);
   const [saving, setSaving] = useState(false);
@@ -47,6 +47,7 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
   const [askingPrice,  setAskingPrice] = useState(0);
   const [quantity,     setQuantity]    = useState(1);
   const [location,     setLocation]    = useState('');
+  const [homeId,       setHomeId]      = useState(null); // null = first home
   const [notes,        setNotes]       = useState('');
   const [listingUrl,   setListingUrl]  = useState('');
 
@@ -126,6 +127,7 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
         notes:        notes.trim() || null,
         listing_url:  listingUrl.trim() || null,
         location:     location.trim() || null,
+        home_id:      homeId || homes?.[0]?.id || null,
         photo_path:   photoPath,
       });
       onClose();
@@ -311,6 +313,22 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
             ))}
           </div>
         </div>
+        {homes?.length > 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={labelStyle}>Property</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {homes.map(h => (
+                <button key={h.id} onClick={() => setHomeId(h.id)} style={{
+                  padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
+                  border: `1px solid ${(homeId || homes[0]?.id) === h.id ? 'var(--accent-gold-dim)' : 'var(--border-subtle)'}`,
+                  background: (homeId || homes[0]?.id) === h.id ? 'rgba(212,168,83,0.12)' : 'var(--bg-elevated)',
+                  color: (homeId || homes[0]?.id) === h.id ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                  fontWeight: (homeId || homes[0]?.id) === h.id ? 600 : 400,
+                }}>{h.name}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={labelStyle}>Notes</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}

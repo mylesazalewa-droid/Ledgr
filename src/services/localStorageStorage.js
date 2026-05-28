@@ -9,7 +9,10 @@
 
 const KEY_ITEMS      = 'stash:items';
 const KEY_CATEGORIES = 'stash:categories';
+const KEY_HOMES      = 'stash:homes';
 const KEY_SETTINGS   = 'stash:settings';
+
+const DEFAULT_HOMES = [{ id: 'home_default', name: 'My Home', sort_order: 0 }];
 const PHOTO_DB       = 'stash-photos';
 const PHOTO_STORE    = 'photos';
 
@@ -207,6 +210,41 @@ export function createLocalStorageAdapter() {
       save(KEY_CATEGORIES, load(KEY_CATEGORIES, DEFAULT_CATEGORIES).filter(c => c.id !== id));
       const items = load(KEY_ITEMS, []);
       save(KEY_ITEMS, items.map(i => i.category_id === id ? { ...i, category_id: 'cat_other' } : i));
+      return { success: true };
+    },
+
+    // ---- Homes ----
+    async getHomes() {
+      const stored = load(KEY_HOMES, null);
+      if (!stored) {
+        save(KEY_HOMES, DEFAULT_HOMES);
+        return DEFAULT_HOMES;
+      }
+      return stored;
+    },
+
+    async addHome(data) {
+      const homes = load(KEY_HOMES, DEFAULT_HOMES);
+      const home  = { ...data, id: `home_${crypto.randomUUID()}` };
+      save(KEY_HOMES, [...homes, home]);
+      return home;
+    },
+
+    async updateHome(id, changes) {
+      const homes = load(KEY_HOMES, DEFAULT_HOMES);
+      save(KEY_HOMES, homes.map(h => h.id === id ? { ...h, ...changes } : h));
+    },
+
+    async deleteHome(id) {
+      const homes = load(KEY_HOMES, DEFAULT_HOMES);
+      const first = homes.find(h => h.id !== id);
+      if (first) {
+        const items = load(KEY_ITEMS, []);
+        save(KEY_ITEMS, items.map(i =>
+          (i.home_id === id || !i.home_id) ? { ...i, home_id: first.id } : i
+        ));
+      }
+      save(KEY_HOMES, homes.filter(h => h.id !== id));
       return { success: true };
     },
 

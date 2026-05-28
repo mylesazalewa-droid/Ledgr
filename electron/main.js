@@ -90,6 +90,12 @@ ipcMain.handle('addCategory',    (_, cat)   => getDb().addCategory(cat));
 ipcMain.handle('updateCategory', (_, id, c) => getDb().updateCategory(id, c));
 ipcMain.handle('deleteCategory', (_, id)    => getDb().deleteCategory(id));
 
+// ---- IPC: Homes ----
+ipcMain.handle('getHomes',    ()         => getDb().getHomes());
+ipcMain.handle('addHome',     (_, home)  => getDb().addHome(home));
+ipcMain.handle('updateHome',  (_, id, c) => getDb().updateHome(id, c));
+ipcMain.handle('deleteHome',  (_, id)    => getDb().deleteHome(id));
+
 // ---- IPC: Photos ----
 ipcMain.handle('openPhotoDialog', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {

@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld('ledgr', {
   updateCategory:   (id, changes)   => ipcRenderer.invoke('updateCategory', id, changes),
   deleteCategory:   (id)            => ipcRenderer.invoke('deleteCategory', id),
 
+  // Homes
+  getHomes:         ()              => ipcRenderer.invoke('getHomes'),
+  addHome:          (home)          => ipcRenderer.invoke('addHome', home),
+  updateHome:       (id, changes)   => ipcRenderer.invoke('updateHome', id, changes),
+  deleteHome:       (id)            => ipcRenderer.invoke('deleteHome', id),
+
   // Photos
   openPhotoDialog:      ()     => ipcRenderer.invoke('openPhotoDialog'),
   copyPhotoToAppData:   (p)    => ipcRenderer.invoke('copyPhotoToAppData', p),
