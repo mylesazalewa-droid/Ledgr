@@ -132,7 +132,7 @@ function AppInner() {
     fresh.forEach(m => seenMsgIds.current.add(m.id));
     fresh.forEach((m, i) => {
       setTimeout(() => {
-        toast(`💬 ${m.buyerName} is interested in ${m.itemName}`, 'info', 6000, m.message);
+        toast(`${m.buyerName} wants to buy ${m.itemName}`, 'message', 6000, m.message);
       }, i * 900);
     });
   }, [buyerMessages]); // eslint-disable-line react-hooks/exhaustive-deps
