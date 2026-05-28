@@ -9,7 +9,7 @@ export function useItems() {
     setLoading(true);
 
     // subscribeToItems returns an unsubscribe fn (Firestore / localStorage).
-    // For Electron (window.stash) it returns undefined — fall back to one-shot fetch.
+    // For Electron (window.ledgr) it returns undefined — fall back to one-shot fetch.
     const unsubscribe = storage.subscribeToItems((data) => {
       setItems(data);
       setLoading(false);

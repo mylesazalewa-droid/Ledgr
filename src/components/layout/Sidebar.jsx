@@ -66,7 +66,7 @@ export default function Sidebar() {
           color: 'var(--accent-gold)',
           letterSpacing: '-0.02em',
         }}>
-          Stash
+          Ledgr
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
           Resale Inventory

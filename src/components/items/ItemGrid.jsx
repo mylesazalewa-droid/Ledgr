@@ -37,7 +37,7 @@ export default function ItemGrid({ statusFilter, bulkMode = false, selectedIds, 
       <EmptyState
         icon={Package}
         title="No items here"
-        description="Add items to your stash to see them here."
+        description="Add items to your Ledgr to see them here."
       />
     );
   }

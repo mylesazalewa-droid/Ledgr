@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('stash', {
+contextBridge.exposeInMainWorld('ledgr', {
   // Items
   getItems:   (filters)         => ipcRenderer.invoke('getItems', filters),
   getItem:    (id)              => ipcRenderer.invoke('getItem', id),

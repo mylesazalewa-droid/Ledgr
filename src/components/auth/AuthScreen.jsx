@@ -85,7 +85,7 @@ export default function AuthScreen() {
           }}>
             <Package size={28} color="#0a0a0b" />
           </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--text-primary)' }}>Stash</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--text-primary)' }}>Ledgr</div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
             {mode === 'signin' ? 'Sign in to your inventory' : 'Create your account'}
           </div>

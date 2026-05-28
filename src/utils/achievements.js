@@ -7,7 +7,7 @@ export const ACHIEVEMENTS = [
     id:    'first_listed',
     icon:  '📋',
     label: 'Getting Started',
-    desc:  'Added your first item to Stash',
+    desc:  'Added your first item to Ledgr',
     check: s => (s.totalItems + s.soldCount) >= 1,
   },
   {
@@ -53,7 +53,7 @@ export const ACHIEVEMENTS = [
     id:    'earn_100',
     icon:  '💵',
     label: 'First Hundred',
-    desc:  'Earned $100 from your stash',
+    desc:  'Earned $100 from your ledgr',
     check: s => s.totalEarned >= 100,
   },
   {

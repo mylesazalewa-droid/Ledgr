@@ -128,7 +128,7 @@ function AppInner() {
     const newItem = await addItem(itemData);
     setShowAddModal(false);
     refetchStats();
-    toast('Item added to stash', 'success');
+    toast('Item added to Ledgr', 'success');
     return newItem;
   }, [addItem, refetchStats, toast]);
 
@@ -209,7 +209,7 @@ function AppInner() {
 
 function AuthGate({ children }) {
   const [user,    setUser]    = useState(undefined); // undefined = loading
-  const isWeb = isFirebaseConfigured && !window.stash;
+  const isWeb = isFirebaseConfigured && !window.ledgr;
 
   useEffect(() => {
     if (!isWeb) { setUser(true); return; } // Electron — skip auth

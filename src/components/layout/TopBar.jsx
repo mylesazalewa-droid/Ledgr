@@ -47,7 +47,7 @@ export default function TopBar() {
             flexShrink: 0,
             WebkitAppRegion: 'no-drag',
           }}>
-            Stash
+            Ledgr
           </span>
 
           {showSearch && (

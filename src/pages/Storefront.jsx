@@ -245,7 +245,7 @@ export default function Storefront({ userId }) {
   function handleShare() {
     const url = window.location.href;
     if (navigator.share) {
-      navigator.share({ title: `${storefront?.displayName || 'Stash'} Shop`, url }).catch(() => {});
+      navigator.share({ title: `${storefront?.displayName || 'Ledgr'} Shop`, url }).catch(() => {});
     } else {
       navigator.clipboard?.writeText(url).then(() => {
         setCopied(true);
@@ -321,7 +321,7 @@ export default function Storefront({ userId }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-gold)', letterSpacing: '-0.01em' }}>
-                  {storefront.displayName || 'Stash Shop'}
+                  {storefront.displayName || 'Ledgr Shop'}
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -360,7 +360,7 @@ export default function Storefront({ userId }) {
           </div>
 
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
-            Powered by <span style={{ color: 'var(--accent-gold-dim)' }}>Stash</span>
+            Powered by <span style={{ color: 'var(--accent-gold-dim)' }}>Ledgr</span>
           </div>
         </div>
       </div>

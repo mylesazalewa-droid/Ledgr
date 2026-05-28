@@ -303,7 +303,7 @@ export default function AddItemModal({ onClose }) {
         ) : (
           <button onClick={handleSave} disabled={!name.trim() || saving}
             style={{ ...saveBtn, opacity: (!name.trim() || saving) ? 0.5 : 1, cursor: (!name.trim() || saving) ? 'not-allowed' : 'pointer' }}>
-            {saving ? 'Saving…' : <><Check size={14} /> Add to Stash</>}
+            {saving ? 'Saving…' : <><Check size={14} /> Add to Ledgr</>}
           </button>
         )}
       </div>

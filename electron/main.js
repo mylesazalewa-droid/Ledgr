@@ -130,8 +130,8 @@ ipcMain.handle('openExternal', (_, url) => shell.openExternal(url));
 
 ipcMain.handle('exportCsv', async (_, csvContent) => {
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: 'Export Stash Inventory',
-    defaultPath: `stash-export-${new Date().toISOString().slice(0, 10)}.csv`,
+    title: 'Export Ledgr Inventory',
+    defaultPath: `ledgr-export-${new Date().toISOString().slice(0, 10)}.csv`,
     filters: [{ name: 'CSV', extensions: ['csv'] }],
   });
   if (result.canceled) return false;

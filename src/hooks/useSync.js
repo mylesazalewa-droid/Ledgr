@@ -8,7 +8,7 @@ export function useSync() {
   const [error, setError] = useState(null);
 
   const sync = async () => {
-    const enabled = await window.stash.getSetting('FEATURE_FIREBASE_SYNC');
+    const enabled = await window.ledgr.getSetting('FEATURE_FIREBASE_SYNC');
     if (enabled !== 'true') return;
     setSyncing(true);
     setError(null);

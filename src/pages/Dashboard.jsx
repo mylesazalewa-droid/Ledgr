@@ -68,7 +68,7 @@ export default function Dashboard() {
           animation: 'fadeSlideUp 0.35s cubic-bezier(0.32,0.72,0,1) both',
         }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            Your Stash 📦
+            Your Ledgr 📦
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
             Here's what you've got

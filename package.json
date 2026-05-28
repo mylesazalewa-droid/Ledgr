@@ -1,5 +1,5 @@
 {
-  "name": "stash",
+  "name": "ledgr",
   "version": "1.0.0",
   "description": "Personal Resale Inventory Manager",
   "main": "electron/main.js",

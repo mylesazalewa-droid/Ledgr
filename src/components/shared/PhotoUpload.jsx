@@ -57,9 +57,9 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
 
   // ---- Electron: native file dialog ----
   const handleElectronClick = async () => {
-    const filePath = await window.stash.openPhotoDialog();
+    const filePath = await window.ledgr.openPhotoDialog();
     if (!filePath) return;
-    const copiedPath = await window.stash.copyPhotoToAppData(filePath);
+    const copiedPath = await window.ledgr.copyPhotoToAppData(filePath);
     onPhotoSelected(copiedPath);
   };
 
@@ -107,7 +107,7 @@ export default function PhotoUpload({ photoPath, photoDataUrl, onPhotoSelected, 
     if (isElectron) {
       const filePath = file.path;
       if (!filePath) return;
-      const copiedPath = await window.stash.copyPhotoToAppData(filePath);
+      const copiedPath = await window.ledgr.copyPhotoToAppData(filePath);
       onPhotoSelected(copiedPath);
     } else {
       const blobUrl = URL.createObjectURL(file);
