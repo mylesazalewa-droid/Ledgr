@@ -14,17 +14,26 @@ function fmt(n) {
 }
 
 /*
- * Count-up: animates from 0 → target once when target first becomes non-zero.
- * Uses a ref so it only fires once per component lifetime (not on every render).
+ * Count-up: animates from 0 → target on first load, then snaps directly to
+ * new values so the hero number stays in sync when items are added or the
+ * active home changes.
  */
 function useCountUp(target, duration = 1400) {
   const [value, setValue]   = useState(0);
-  const hasRun              = useRef(false);
+  const animatedRef         = useRef(false);
   const rafRef              = useRef(null);
 
   useEffect(() => {
-    if (!target || hasRun.current) return;
-    hasRun.current = true;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    // After the initial animation, just snap to whatever the new target is
+    if (animatedRef.current) {
+      setValue(target || 0);
+      return;
+    }
+
+    if (!target) return;
+    animatedRef.current = true;
 
     const startTime = performance.now();
     const tick = (now) => {
