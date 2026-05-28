@@ -10,7 +10,7 @@ import { storage } from '../../services/storage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
-const LOCATIONS  = ['Living Room', 'Bedroom', 'Bedroom 2', 'Kitchen', 'Bathroom', 'Office', 'Garage', 'Basement', 'Attic', 'Master Closet', 'Storage'];
+const LOCATIONS  = ['Living Room', 'Family Room', 'Bedroom', 'Bedroom 2', 'Bedroom 3', 'Bedroom 4', 'Kitchen', 'Bathroom', 'Office', 'Garage', 'Basement', 'Attic', 'Master Closet', 'Storage'];
 
 const LISTING_PLATFORMS = [
   { id: 'eBay',                 color: '#E53238' },

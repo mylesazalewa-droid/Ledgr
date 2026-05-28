@@ -7,13 +7,13 @@ import { storage } from '../services/storage.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 
 // ── Room definitions ─ SVG coordinates + keyword matching ────────────────────
-// viewBox = "0 0 880 640"  wall-gap = 8px
+// viewBox = "0 0 880 800"  wall-gap = 8px
 const ROOM_DEFS = [
   {
     id: 'living_room', label: 'Living Room',
     x: 8,   y: 8,   w: 236, h: 298,
     dotX: 126, dotY: 157,
-    keywords: ['living', 'lounge', 'family room', 'living room'],
+    keywords: ['living', 'lounge', 'living room'],
   },
   {
     id: 'kitchen', label: 'Kitchen',
@@ -59,8 +59,8 @@ const ROOM_DEFS = [
   },
   {
     id: 'garage', label: 'Garage',
-    x: 8,   y: 314, w: 236, h: 318,
-    dotX: 126, dotY: 473,
+    x: 8,   y: 314, w: 236, h: 478,
+    dotX: 126, dotY: 553,
     keywords: ['garage'],
   },
   {
@@ -71,15 +71,33 @@ const ROOM_DEFS = [
   },
   {
     id: 'storage', label: 'Storage',
-    x: 252, y: 472, w: 174, h: 160,
-    dotX: 339, dotY: 552,
+    x: 252, y: 472, w: 174, h: 320,
+    dotX: 339, dotY: 632,
     keywords: ['storage', 'storeroom', 'utility', 'storage room'],
   },
   {
     id: 'basement', label: 'Basement',
-    x: 434, y: 314, w: 438, h: 318,
-    dotX: 653, dotY: 473,
+    x: 434, y: 314, w: 438, h: 150,
+    dotX: 653, dotY: 389,
     keywords: ['basement'],
+  },
+  {
+    id: 'family_room', label: 'Family Room',
+    x: 434, y: 472, w: 200, h: 160,
+    dotX: 534, dotY: 538,
+    keywords: ['family room', 'family', 'den', 'great room', 'rec room'],
+  },
+  {
+    id: 'bedroom_3', label: 'Bedroom 3',
+    x: 642, y: 472, w: 230, h: 160,
+    dotX: 757, dotY: 538,
+    keywords: ['bedroom 3', 'third bedroom', "kids room", "kid's room", "children's room", 'kids bedroom'],
+  },
+  {
+    id: 'bedroom_4', label: 'Bedroom 4',
+    x: 434, y: 640, w: 438, h: 152,
+    dotX: 653, dotY: 716,
+    keywords: ['bedroom 4', 'fourth bedroom', 'nursery', 'baby room', 'baby'],
   },
 ];
 
@@ -147,24 +165,47 @@ const FURNITURE = {
     { x: 380, y: 328, w: 40,  h: 24  }, // monitor
   ],
   storage: [
-    { x: 256, y: 478, w: 162, h: 14  }, // shelf top
-    { x: 256, y: 510, w: 162, h: 14  }, // shelf mid
-    { x: 256, y: 542, w: 162, h: 14  }, // shelf low
-    { x: 256, y: 574, w: 162, h: 50  }, // floor boxes
+    { x: 256, y: 478, w: 162, h: 14  }, // shelf 1
+    { x: 256, y: 510, w: 162, h: 14  }, // shelf 2
+    { x: 256, y: 542, w: 162, h: 14  }, // shelf 3
+    { x: 256, y: 574, w: 162, h: 14  }, // shelf 4
+    { x: 256, y: 644, w: 162, h: 14  }, // shelf 5
+    { x: 256, y: 676, w: 162, h: 14  }, // shelf 6
+    { x: 256, y: 708, w: 162, h: 14  }, // shelf 7
+    { x: 256, y: 752, w: 162, h: 32  }, // floor bins
   ],
   garage: [
     { x: 22,  y: 344, w: 210, h: 118 }, // car footprint
-    { x: 22,  y: 472, w: 24,  h: 140 }, // left shelving
-    { x: 200, y: 472, w: 24,  h: 140 }, // right shelving
-    { x: 56,  y: 484, w: 100, h: 50  }, // workbench
+    { x: 22,  y: 472, w: 24,  h: 300 }, // left shelving (extended)
+    { x: 200, y: 472, w: 24,  h: 300 }, // right shelving (extended)
+    { x: 56,  y: 484, w: 100, h: 50  }, // workbench front
+    { x: 56,  y: 626, w: 100, h: 50  }, // workbench back
   ],
   basement: [
     { x: 442, y: 322, w: 200, h: 80  }, // storage unit L
     { x: 660, y: 322, w: 80,  h: 80  }, // storage unit R
     { x: 750, y: 322, w: 118, h: 80  }, // shelving
-    { x: 442, y: 480, w: 130, h: 140 }, // storage boxes
-    { x: 590, y: 480, w: 80,  h: 140 }, // chest / unit
-    { x: 690, y: 480, w: 40,  h: 80  }, // small unit
+    { x: 442, y: 416, w: 84,  h: 40  }, // chest L
+    { x: 538, y: 416, w: 84,  h: 40  }, // chest R
+  ],
+  family_room: [
+    { x: 444, y: 478, w: 80,  h: 18  }, // TV unit
+    { x: 444, y: 546, w: 158, h: 55  }, // sofa
+    { x: 484, y: 576, w: 62,  h: 22  }, // coffee table
+    { x: 596, y: 506, w: 28,  h: 28  }, // armchair
+  ],
+  bedroom_3: [
+    { x: 688, y: 496, w: 120, h: 88  }, // bed
+    { x: 670, y: 502, w: 16,  h: 22  }, // nightstand L
+    { x: 810, y: 502, w: 16,  h: 22  }, // nightstand R
+    { x: 650, y: 598, w: 200, h: 18  }, // dresser
+  ],
+  bedroom_4: [
+    { x: 530, y: 666, w: 160, h: 100 }, // bed
+    { x: 510, y: 672, w: 18,  h: 24  }, // nightstand L
+    { x: 692, y: 672, w: 18,  h: 24  }, // nightstand R
+    { x: 440, y: 648, w: 18,  h: 130 }, // side wardrobe
+    { x: 722, y: 648, w: 140, h: 20  }, // dresser
   ],
 };
 
@@ -282,7 +323,7 @@ function RoomSVG({ room, hasItems, isActive, isHovered, itemCount, onSelect, onH
 // ── SVG Floor Plan ────────────────────────────────────────────────────────────
 function FloorPlan({ roomItems, activeRoom, onSelectRoom }) {
   const [hoveredRoom, setHoveredRoom] = useState(null);
-  const VW = 880, VH = 640;
+  const VW = 880, VH = 800;
 
   return (
     <svg

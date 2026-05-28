@@ -12,7 +12,7 @@ import { storage } from '../../services/storage.js';
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 const ICON_MAP   = { Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box };
 const STEPS      = ['Photo', 'Category', 'Details', 'Extras'];
-const LOCATIONS  = ['Living Room', 'Bedroom', 'Master Closet', 'Kitchen', 'Garage', 'Basement', 'Attic', 'Office', 'Storage'];
+const LOCATIONS  = ['Living Room', 'Family Room', 'Bedroom', 'Bedroom 2', 'Bedroom 3', 'Bedroom 4', 'Master Closet', 'Kitchen', 'Garage', 'Basement', 'Attic', 'Office', 'Storage'];
 
 export default function AddItemModal({ onClose, initialQuickMode = false }) {
   const { addItem, categories } = useApp();
