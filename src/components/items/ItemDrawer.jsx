@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader, Sparkles, Tag } from 'lucide-react';
+import { X, ExternalLink, Copy, Trash2, DollarSign, Check, Share2, ImagePlus, Loader, Sparkles, Tag, MapPin } from 'lucide-react';
 import { auth } from '../../firebase.js';
 import { useApp } from '../../App.jsx';
 import StatusBadge from '../shared/StatusBadge.jsx';
@@ -10,6 +10,7 @@ import { storage } from '../../services/storage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
+const LOCATIONS  = ['Living Room', 'Bedroom', 'Bedroom 2', 'Kitchen', 'Bathroom', 'Office', 'Garage', 'Basement', 'Attic', 'Master Closet', 'Storage'];
 
 const LISTING_PLATFORMS = [
   { id: 'eBay',                 color: '#E53238' },
@@ -964,6 +965,42 @@ export default function ItemDrawer({ item, onClose }) {
 
             <Field label="Listing URL">
               <EditableField value={item.listing_url} onChange={v => update('listing_url', v)} placeholder="https://…" />
+            </Field>
+
+            {/* ── Location in Home ── */}
+            <Field label="Location in Home">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <MapPin size={12} color={item.location ? 'var(--accent-gold)' : 'var(--text-tertiary)'} style={{ flexShrink: 0 }} />
+                <EditableField
+                  value={item.location}
+                  onChange={v => update('location', v?.trim() || null)}
+                  placeholder="e.g. Garage, Bedroom 2…"
+                />
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {LOCATIONS.map(l => {
+                  const active = item.location === l;
+                  return (
+                    <button
+                      key={l}
+                      onClick={() => update('location', active ? null : l)}
+                      style={{
+                        padding:    '3px 10px',
+                        borderRadius: 20,
+                        fontSize:   10,
+                        fontWeight: active ? 600 : 400,
+                        cursor:     'pointer',
+                        border:     `1px solid ${active ? 'rgba(255,203,116,0.5)' : 'var(--border-subtle)'}`,
+                        background: active ? 'rgba(255,203,116,0.1)' : 'transparent',
+                        color:      active ? 'var(--accent-gold)' : 'var(--text-tertiary)',
+                        transition: 'all 80ms',
+                      }}
+                    >
+                      {l}
+                    </button>
+                  );
+                })}
+              </div>
             </Field>
 
             {/* ── Delete ── */}
