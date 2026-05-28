@@ -1,9 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
-import { storage } from '../services/storage.js';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { storage, isElectron } from '../services/storage.js';
+import { isFirebaseConfigured } from '../firebase.js';
+
+// Firestore (web + Firebase) delivers live updates via onSnapshot.
+// Electron (SQLite) and localStorage have no live subscription —
+// mutations must update local state immediately or the UI stays stale
+// until the app is restarted.
+const hasLiveSubscription = isFirebaseConfigured && !isElectron;
 
 export function useItems() {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
+  // Track whether onSnapshot is the active source of truth
+  const liveRef = useRef(false);
 
   useEffect(() => {
     setLoading(true);
@@ -11,6 +20,7 @@ export function useItems() {
     // subscribeToItems returns an unsubscribe fn (Firestore / localStorage).
     // For Electron (window.ledgr) it returns undefined — fall back to one-shot fetch.
     const unsubscribe = storage.subscribeToItems((data) => {
+      liveRef.current = true;
       setItems(data);
       setLoading(false);
     });
@@ -21,29 +31,43 @@ export function useItems() {
         .catch((err)  => { console.error('useItems:', err); setLoading(false); });
     }
 
-    return () => unsubscribe?.();
+    return () => { liveRef.current = false; unsubscribe?.(); };
   }, []);
 
-  // With onSnapshot as the source of truth, mutations just fire the write.
-  // The subscription delivers the updated list automatically — no local setItems
-  // needed (and doing so would cause every entry to appear twice).
   const addItem = useCallback(async (item) => {
-    return await storage.addItem(item);
+    const newItem = await storage.addItem(item);
+    // For Firestore, onSnapshot delivers the update automatically.
+    // For Electron + localStorage there is no live subscription — update immediately.
+    if (!hasLiveSubscription) {
+      setItems(prev => [newItem, ...prev]);
+    }
+    return newItem;
   }, []);
 
   const updateItem = useCallback(async (id, changes) => {
-    return await storage.updateItem(id, changes);
+    const updated = await storage.updateItem(id, changes);
+    if (!hasLiveSubscription && updated) {
+      setItems(prev => prev.map(i => i.id === id ? updated : i));
+    }
+    return updated;
   }, []);
 
   const deleteItem = useCallback(async (id) => {
     await storage.deleteItem(id);
+    if (!hasLiveSubscription) {
+      setItems(prev => prev.filter(i => i.id !== id));
+    }
   }, []);
 
   const markSold = useCallback(async (id, saleData) => {
-    return await storage.markSold(id, saleData);
+    const updated = await storage.markSold(id, saleData);
+    if (!hasLiveSubscription && updated) {
+      setItems(prev => prev.map(i => i.id === id ? updated : i));
+    }
+    return updated;
   }, []);
 
-  // refetch kept for Electron and manual-refresh callers
+  // refetch kept for manual-refresh callers
   const refetch = useCallback(async () => {
     try {
       const data = await storage.getItems({});
