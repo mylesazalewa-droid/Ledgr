@@ -1,11 +1,12 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Package, DollarSign, Settings, Plus, Zap } from 'lucide-react';
+import { LayoutDashboard, Package, DollarSign, Settings, Plus, Zap, Home } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Home',      icon: LayoutDashboard },
   { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'house',     label: 'Map',       icon: Home },
   { id: 'sold',      label: 'Sold',      icon: DollarSign },
   { id: 'settings',  label: 'Settings',  icon: Settings },
 ];
@@ -162,7 +163,7 @@ function NavTab({ item, active, onPress }) {
       </div>
 
       <span style={{
-        fontSize:      10,
+        fontSize:      9,
         fontWeight:    active ? 700 : 400,
         letterSpacing: active ? '0.02em' : 0,
         transition:    'font-weight 150ms',

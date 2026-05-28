@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Inventory from './pages/Inventory.jsx';
 import Sold from './pages/Sold.jsx';
 import Settings from './pages/Settings.jsx';
+import House from './pages/House.jsx';
 import ItemDrawer from './components/items/ItemDrawer.jsx';
 import AddItemModal from './components/items/AddItemModal.jsx';
 import ErrorBoundary from './components/shared/ErrorBoundary.jsx';
@@ -219,6 +220,7 @@ function AppInner() {
             {currentPage === 'inventory' && <Inventory />}
             {currentPage === 'sold'      && <Sold />}
             {currentPage === 'settings'  && <Settings />}
+            {currentPage === 'house'     && <House />}
           </div>
         </ErrorBoundary>
       </Layout>

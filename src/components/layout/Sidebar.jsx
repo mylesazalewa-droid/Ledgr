@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, DollarSign, Settings,
-  Plus, Cpu, Zap, Home, Shirt, Wrench, Star, Bike, Box,
+  Plus, Cpu, Zap, Home, MapPin, Shirt, Wrench, Star, Bike, Box,
 } from 'lucide-react';
 import { useApp } from '../../App.jsx';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'inventory', label: 'Inventory',  icon: Package },
-  { id: 'sold',      label: 'Sold',       icon: DollarSign },
-  { id: 'settings',  label: 'Settings',   icon: Settings },
+  { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'house',     label: 'Home Map',  icon: Home },
+  { id: 'sold',      label: 'Sold',      icon: DollarSign },
+  { id: 'settings',  label: 'Settings',  icon: Settings },
 ];
 
 const ICON_MAP = {
