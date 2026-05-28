@@ -120,15 +120,19 @@ function AppInner() {
   }, [stats]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Buyer message notifications ────────────────────────────────────────────
+  // Wait for the first non-empty snapshot before setting the baseline so we
+  // don't mistake the initial Firestore load as a batch of "new" messages.
+  // After that, only toast messages that are both unseen AND still unread.
   const msgInitRef  = useRef(false);
   const seenMsgIds  = useRef(new Set());
   useEffect(() => {
+    if (buyerMessages.length === 0) return; // wait for real data
     if (!msgInitRef.current) {
       msgInitRef.current = true;
-      buyerMessages.forEach(m => seenMsgIds.current.add(m.id));
+      buyerMessages.forEach(m => seenMsgIds.current.add(m.id)); // silently absorb existing
       return;
     }
-    const fresh = buyerMessages.filter(m => !seenMsgIds.current.has(m.id));
+    const fresh = buyerMessages.filter(m => !seenMsgIds.current.has(m.id) && !m.read);
     fresh.forEach(m => seenMsgIds.current.add(m.id));
     fresh.forEach((m, i) => {
       setTimeout(() => {
