@@ -163,7 +163,25 @@ export default function ItemDrawer({ item, onClose }) {
   const [copied,         setCopied]         = useState(false);
   const [generating,     setGenerating]     = useState(false);
   const [aiDescription,  setAiDescription]  = useState(null);
-  const fileInputRef = useRef(null);
+  const [tags,           setTags]           = useState(() => Array.isArray(item.tags) ? item.tags : []);
+  const [tagInput,       setTagInput]       = useState('');
+  const fileInputRef  = useRef(null);
+  const tagInputRef   = useRef(null);
+
+  function commitTag(raw) {
+    const tag = raw.trim().replace(/,/g, '').slice(0, 28);
+    if (!tag || tags.includes(tag)) { setTagInput(''); return; }
+    const next = [...tags, tag];
+    setTags(next);
+    updateItem(item.id, { tags: next });
+    setTagInput('');
+  }
+
+  function removeTag(tag) {
+    const next = tags.filter(t => t !== tag);
+    setTags(next);
+    updateItem(item.id, { tags: next });
+  }
 
   const category = categories.find(c => c.id === item.category_id);
 
@@ -607,6 +625,82 @@ export default function ItemDrawer({ item, onClose }) {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Tags */}
+            <Field label="Tags">
+              <div
+                onClick={() => tagInputRef.current?.focus()}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 6,
+                  padding: '6px 8px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 8,
+                  minHeight: 38,
+                  alignItems: 'center',
+                  cursor: 'text',
+                  transition: 'border-color 100ms',
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-gold-dim)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+              >
+                {tags.map(tag => (
+                  <div key={tag} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    background: 'rgba(255,203,116,0.12)',
+                    border: '1px solid rgba(255,203,116,0.22)',
+                    borderRadius: 20,
+                    padding: '3px 7px 3px 9px',
+                    fontSize: 11,
+                    color: 'var(--accent-gold)',
+                    fontWeight: 500,
+                    lineHeight: 1,
+                  }}>
+                    {tag}
+                    <button
+                      onClick={e => { e.stopPropagation(); removeTag(tag); }}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        padding: '0 0 0 2px', display: 'flex', alignItems: 'center',
+                        color: 'rgba(255,203,116,0.55)', lineHeight: 1,
+                      }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+                <input
+                  ref={tagInputRef}
+                  value={tagInput}
+                  onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+                      e.preventDefault();
+                      commitTag(tagInput);
+                    }
+                    if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
+                      removeTag(tags[tags.length - 1]);
+                    }
+                  }}
+                  onBlur={() => tagInput.trim() && commitTag(tagInput)}
+                  placeholder={tags.length === 0 ? 'Add tags…' : ''}
+                  style={{
+                    background: 'none', border: 'none', outline: 'none',
+                    fontSize: 12, color: 'var(--text-primary)',
+                    minWidth: 80, flex: 1, padding: '3px 2px',
+                  }}
+                />
+              </div>
+              {tags.length === 0 && (
+                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3 }}>
+                  Press Enter or comma to add a tag
+                </div>
+              )}
+            </Field>
 
             <Field label="Listing URL">
               <EditableField value={item.listing_url} onChange={v => update('listing_url', v)} placeholder="https://…" />
