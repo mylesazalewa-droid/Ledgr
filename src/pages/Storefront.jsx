@@ -215,6 +215,28 @@ export default function Storefront({ userId }) {
   const [filterCondition, setFilterCondition] = useState('');
   const [sortBy,          setSortBy]          = useState('');
 
+  // globals.css locks html/body/#root with overflow:hidden + height:100dvh for
+  // the main app shell. The storefront is a normal scrolling web page, so we
+  // override those styles on mount and restore them on unmount.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById('root');
+    const prev = {
+      htmlH: html.style.height,  htmlO: html.style.overflow,
+      bodyH: body.style.height,  bodyO: body.style.overflow,
+      rootH: root?.style.height, rootO: root?.style.overflow,
+    };
+    html.style.height = 'auto';  html.style.overflow = 'auto';
+    body.style.height = 'auto';  body.style.overflow = 'auto';
+    if (root) { root.style.height = 'auto'; root.style.overflow = 'visible'; }
+    return () => {
+      html.style.height = prev.htmlH; html.style.overflow = prev.htmlO;
+      body.style.height = prev.bodyH; body.style.overflow = prev.bodyO;
+      if (root) { root.style.height = prev.rootH; root.style.overflow = prev.rootO; }
+    };
+  }, []);
+
   useEffect(() => {
     if (!userId) { setError('Storefront not found.'); setLoading(false); return; }
     loadStorefront();
