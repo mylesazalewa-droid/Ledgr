@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Check, Scan, Loader, Zap,
          Cpu, Home, Shirt, Wrench, Star, Bike, Box } from 'lucide-react';
 import { useApp } from '../../App.jsx';
+import { lookupItemWithAI, lookupUPCWithAI } from '../../services/ai.js';
 import PhotoUpload from '../shared/PhotoUpload.jsx';
 import PriceInput from '../shared/PriceInput.jsx';
 import BarcodeScanner from '../shared/BarcodeScanner.jsx';
@@ -20,7 +21,16 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
   const [step,   setStep]   = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  const savingRef = useRef(false); // synchronous guard — useState is async and won't block double-taps
+  const savingRef    = useRef(false); // synchronous guard — useState is async and won't block double-taps
+  const aiLoadingRef = useRef(false);
+
+  const [aiLoading,    setAiLoading]    = useState(false);
+  const [aiError,      setAiError]      = useState(null);
+  const [geminiKey,    setGeminiKey]    = useState('');
+
+  useEffect(() => {
+    setGeminiKey(localStorage.getItem('ledgr_gemini_api_key') || '');
+  }, []);
 
   const [showScanner,  setShowScanner]  = useState(false);
   const [scanLookup,   setScanLookup]   = useState(false);
@@ -50,19 +60,50 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
     setShowScanner(false);
     setScanLookup(true);
     try {
-      const res  = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
-      const data = await res.json();
+      // Try UPC database first
+      const res   = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);
+      const data  = await res.json();
       const found = data.items?.[0];
-      if (found) {
+      if (found?.title || found?.brand) {
         if (found.title) setName(found.title);
         if (found.brand) setMake(found.brand);
         if (found.model) setModel(found.model || '');
         setStep(2);
+        return;
       }
+      // UPC database came up empty — try Gemini if a key is configured
+      if (geminiKey) {
+        const result = await lookupUPCWithAI(code, geminiKey);
+        if (result) {
+          if (result.name)  setName(result.name);
+          if (result.make)  setMake(result.make);
+          if (result.model) setModel(result.model);
+        }
+      }
+      setStep(2); // advance to details even if lookup found nothing
     } catch {
-      // silently ignore
+      setStep(2); // advance anyway so the scan isn't a dead end
     } finally {
       setScanLookup(false);
+    }
+  }
+
+  async function handleAILookup() {
+    if (aiLoadingRef.current || (!make.trim() && !model.trim())) return;
+    aiLoadingRef.current = true;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await lookupItemWithAI(make, model, geminiKey);
+      if (result.name  && !name.trim()) setName(result.name);
+      if (result.est_value)             setEstValue(result.est_value);
+      if (result.asking_price)          setAskingPrice(result.asking_price);
+      if (result.description)           setNotes(result.description);
+    } catch (err) {
+      setAiError('AI lookup failed — ' + err.message);
+    } finally {
+      aiLoadingRef.current = false;
+      setAiLoading(false);
     }
   }
 
@@ -175,11 +216,36 @@ export default function AddItemModal({ onClose, initialQuickMode = false }) {
 
     if (step === 2) return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <InputField label="Item Name *" value={name} onChange={setName} placeholder="e.g. Sony WH-1000XM5" autoFocus />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <InputField label="Make / Brand" value={make}  onChange={setMake}  placeholder="e.g. Sony" />
           <InputField label="Model"        value={model} onChange={setModel} placeholder="e.g. WH-1000XM5" />
         </div>
+
+        {/* AI fill — shown when make or model is entered and API key is set */}
+        {geminiKey && (make.trim() || model.trim()) && (
+          <button
+            onClick={handleAILookup}
+            disabled={aiLoading}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              padding: '11px 16px', borderRadius: 10,
+              border: '1px solid rgba(255,203,116,0.28)',
+              background: aiLoading ? 'rgba(255,203,116,0.06)' : 'rgba(255,203,116,0.11)',
+              color: aiLoading ? 'var(--text-tertiary)' : 'var(--accent-gold)',
+              fontSize: 13, fontWeight: 600,
+              cursor: aiLoading ? 'default' : 'pointer',
+              width: '100%', transition: 'background 100ms',
+            }}
+          >
+            {aiLoading
+              ? <><Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> Looking up…</>
+              : <><Sparkles size={13} /> Fill with AI</>
+            }
+          </button>
+        )}
+        {aiError && <div style={{ fontSize: 11, color: 'var(--accent-red)' }}>{aiError}</div>}
+
+        <InputField label="Item Name *" value={name} onChange={setName} placeholder="e.g. Sony WH-1000XM5" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={labelStyle}>Condition</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

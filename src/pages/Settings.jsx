@@ -288,6 +288,7 @@ export default function Settings() {
   const [sfBio,             setSfBio]             = useState('');
   const [sfContact,         setSfContact]         = useState('');
   const [urlCopied,         setUrlCopied]         = useState(false);
+  const [geminiApiKey,      setGeminiApiKey]      = useState(() => localStorage.getItem('ledgr_gemini_api_key') || '');
 
   const user = auth?.currentUser ?? null;
   const storefrontUrl = isFirebaseConfigured && auth?.currentUser
@@ -614,6 +615,41 @@ export default function Settings() {
           )}
         </>
       )}
+
+      {/* ── AI ── */}
+      <SectionLabel label="AI" />
+      <SettingsCard overflow="visible">
+        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Gemini API Key
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+            Enables "Fill with AI" in the add item flow — enter a make &amp; model and Ledgr auto-fills the title, estimated value, asking price, and a ready-to-post listing description.{' '}
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--accent-gold-dim)' }}
+            >
+              Get a free key →
+            </a>
+          </div>
+          <input
+            type="password"
+            value={geminiApiKey}
+            onChange={e => setGeminiApiKey(e.target.value)}
+            onBlur={() => localStorage.setItem('ledgr_gemini_api_key', geminiApiKey)}
+            placeholder="AIza…"
+            style={inputStyle}
+          />
+          {geminiApiKey && (
+            <div style={{ fontSize: 11, color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent-green)' }} />
+              API key saved
+            </div>
+          )}
+        </div>
+      </SettingsCard>
 
       {/* ── Data ── */}
       <SectionLabel label="Data" />

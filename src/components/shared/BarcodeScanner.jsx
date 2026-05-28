@@ -17,8 +17,9 @@ export default function BarcodeScanner({ onResult, onClose }) {
   const doneRef   = useRef(false);
   const html5Ref  = useRef(null);
 
+  // Phase 1: detect which path to use and start native if possible
   useEffect(() => {
-    start();
+    startDetection();
     return () => {
       doneRef.current = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -27,17 +28,23 @@ export default function BarcodeScanner({ onResult, onClose }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function start() {
+  // Phase 2: start html5-qrcode AFTER React re-renders the #_qr_box div.
+  // This fixes the timing bug where startHtml5() was called synchronously
+  // right after setUseNative(false), before the div existed in the DOM.
+  useEffect(() => {
+    if (useNative !== false) return;
+    startHtml5();
+  }, [useNative]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function startDetection() {
     // Try native BarcodeDetector first (Chrome desktop, Samsung Browser, some iOS 17+)
     if ('BarcodeDetector' in window) {
       try {
-        // getSupportedFormats lets us filter to only what the browser supports
         const supported = (await window.BarcodeDetector.getSupportedFormats?.()) ?? [];
         const formats   = supported.length > 0
           ? NATIVE_FORMATS.filter(f => supported.includes(f))
           : NATIVE_FORMATS;
 
-        // Verify the constructor works — some browsers claim support but throw
         const testDetector = new window.BarcodeDetector({ formats: formats.length > 0 ? formats : ['qr_code'] });
         if (testDetector) {
           setUseNative(true);
@@ -48,8 +55,8 @@ export default function BarcodeScanner({ onResult, onClose }) {
         // BarcodeDetector constructor failed — fall through to html5-qrcode
       }
     }
+    // Signal React to render the #_qr_box div; Phase 2 useEffect will call startHtml5()
     setUseNative(false);
-    await startHtml5();
   }
 
   // ── Native BarcodeDetector ────────────────────────────────────────────────
