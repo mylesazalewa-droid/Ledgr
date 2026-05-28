@@ -21,19 +21,20 @@ export default function BottomNav() {
   return (
     <div style={{
       position: 'fixed',
-      bottom: 0,
+      /*
+       * bottom: -200 anchors the container 200px below the viewport edge.
+       * paddingBottom compensates so the pill sits in the right visual position.
+       * The background now extends 200px past the physical screen bottom —
+       * no gap is ever possible regardless of iOS viewport resize behaviour.
+       */
+      bottom: -200,
       left: 0,
       right: 0,
       zIndex: 200,
       background: 'var(--bg-void)',
-      paddingBottom: 'env(safe-area-inset-bottom)',
-      overflow: 'visible',
+      paddingBottom: 'calc(200px + env(safe-area-inset-bottom))',
+      overflow: 'hidden',
     }}>
-      {/* Fills the safe-area strip below so no gap shows on iOS */}
-      <div style={{
-        position: 'absolute', top: '100%', left: 0, right: 0,
-        height: 200, background: 'var(--bg-void)', pointerEvents: 'none',
-      }} />
 
       {/* Floating pill */}
       <nav style={{
