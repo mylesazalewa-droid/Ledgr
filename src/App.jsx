@@ -8,6 +8,7 @@ import Settings from './pages/Settings.jsx';
 import House from './pages/House.jsx';
 import ItemDrawer from './components/items/ItemDrawer.jsx';
 import AddItemModal from './components/items/AddItemModal.jsx';
+import Messages from './pages/Messages.jsx';
 import ErrorBoundary from './components/shared/ErrorBoundary.jsx';
 import { ToastProvider, useToast } from './components/shared/Toast.jsx';
 import AuthScreen from './components/auth/AuthScreen.jsx';
@@ -59,6 +60,7 @@ function AppInner() {
   const [selectedItem,       setSelectedItem]       = useState(null);
   const [showAddModal,       setShowAddModal]       = useState(false);
   const [addModalQuick,      setAddModalQuick]      = useState(false);
+  const [showMessages,       setShowMessages]       = useState(false);
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0);
 
   const { items: allItems, loading: itemsLoading, addItem, updateItem, deleteItem, markSold, refetch: refetchItems } = useItems();
@@ -242,9 +244,10 @@ function AppInner() {
     sortBy, setSortBy,
     selectedItem, setSelectedItem,
     showAddModal, setShowAddModal,
+    showMessages, setShowMessages,
     openQuickAdd,
     searchFocusTrigger,
-    items, filteredItems, itemsLoading,
+    allItems, items, filteredItems, itemsLoading,
     categories,
     homes, activeHomeId: effectiveHomeId, setActiveHomeId,
     stats,
@@ -287,6 +290,12 @@ function AppInner() {
             initialQuickMode={addModalQuick}
             onClose={() => { setShowAddModal(false); setAddModalQuick(false); }}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMessages && (
+          <Messages key="messages" onClose={() => setShowMessages(false)} />
         )}
       </AnimatePresence>
     </AppContext.Provider>

@@ -531,24 +531,26 @@ function StorefrontCard({ item, onSelect }) {
 }
 
 function ItemOverlay({ item, onClose, sellerContact, sellerId }) {
-  const [showMsgForm, setShowMsgForm] = useState(!sellerContact);
-  const [msgName,     setMsgName]     = useState('');
-  const [msgText,     setMsgText]     = useState('');
-  const [msgSent,     setMsgSent]     = useState(false);
-  const [msgSending,  setMsgSending]  = useState(false);
+  const [showMsgForm,   setShowMsgForm]   = useState(!sellerContact);
+  const [msgName,       setMsgName]       = useState('');
+  const [msgContact,    setMsgContact]    = useState('');
+  const [msgText,       setMsgText]       = useState('');
+  const [msgSent,       setMsgSent]       = useState(false);
+  const [msgSending,    setMsgSending]    = useState(false);
 
   async function sendMessage() {
-    if (!msgText.trim() || !sellerId) return;
+    if (!msgText.trim() || !msgContact.trim() || !sellerId) return;
     setMsgSending(true);
     try {
       await addDoc(collection(db, 'messages', sellerId, 'inbox'), {
-        buyerName:  msgName.trim() || 'Someone',
-        message:    msgText.trim(),
-        itemName:   item.name  || 'an item',
-        itemId:     item.id    || '',
-        itemPrice:  item.asking_price || 0,
-        timestamp:  serverTimestamp(),
-        read:       false,
+        buyerName:    msgName.trim() || 'Someone',
+        buyerContact: msgContact.trim(),
+        message:      msgText.trim(),
+        itemName:     item.name  || 'an item',
+        itemId:       item.id    || '',
+        itemPrice:    item.asking_price || 0,
+        timestamp:    serverTimestamp(),
+        read:         false,
       });
       setMsgSent(true);
     } catch (err) {
@@ -690,6 +692,12 @@ function ItemOverlay({ item, onClose, sellerContact, sellerId }) {
                     placeholder="Your name (optional)"
                     style={sfInputStyle}
                   />
+                  <input
+                    value={msgContact}
+                    onChange={e => setMsgContact(e.target.value)}
+                    placeholder="Your email or phone number *"
+                    style={sfInputStyle}
+                  />
                   <textarea
                     value={msgText}
                     onChange={e => setMsgText(e.target.value)}
@@ -700,8 +708,8 @@ function ItemOverlay({ item, onClose, sellerContact, sellerId }) {
                   <button
                     className={contactHref ? 'sf-btn-secondary' : 'sf-btn-primary'}
                     onClick={sendMessage}
-                    disabled={!msgText.trim() || msgSending}
-                    style={{ opacity: (!msgText.trim() || msgSending) ? 0.55 : 1 }}
+                    disabled={!msgText.trim() || !msgContact.trim() || msgSending}
+                    style={{ opacity: (!msgText.trim() || !msgContact.trim() || msgSending) ? 0.55 : 1 }}
                   >
                     {msgSending ? 'Sending…' : 'Send Message'}
                   </button>

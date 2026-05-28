@@ -179,10 +179,10 @@ function HomePicker({ onClose }) {
 }
 
 function MsgBell() {
-  const { unreadMessages, setCurrentPage } = useApp();
+  const { unreadMessages, setShowMessages } = useApp();
   return (
     <button
-      onClick={() => setCurrentPage('settings')}
+      onClick={() => setShowMessages(true)}
       style={{
         position: 'relative',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
